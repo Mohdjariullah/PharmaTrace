@@ -24,17 +24,16 @@ function createEnvFile() {
   if (fs.existsSync(envExamplePath)) {
     envContent = fs.readFileSync(envExamplePath, 'utf8');
   } else {
-    // Create default .env content
+    // Create default .env content with valid Supabase credentials
     envContent = `# Solana Configuration
 NEXT_PUBLIC_PROGRAM_ID=${CONFIG.PROGRAM_ID}
 NEXT_PUBLIC_SOLANA_NETWORK=${CONFIG.NETWORK}
 NEXT_PUBLIC_SOLANA_RPC=${CONFIG.RPC_ENDPOINT}
 NEXT_PUBLIC_SOLANA_WS_ENDPOINT=${CONFIG.WS_ENDPOINT}
 
-# Supabase Configuration (replace with your values)
-
+# Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://tbplqnkbrntjonwsayur.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRicGxxbmticm50am9ud3NheXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5NjkyMjAsImV4cCI6MjA2NDU0NTIyMH0.BtDfGP7xefM4T0uTglYz_qwzq88ZxtS3KzFeJCnT2a8            
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRicGxxbmticm50am9ud3NheXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5NjkyMjAsImV4cCI6MjA2NDU0NTIyMH0.BtDfGP7xefM4T0uTglYz_qwzq88ZxtS3KzFeJCnT2a8
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRicGxxbmticm50am9ud3NheXVyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODk2OTIyMCwiZXhwIjoyMDY0NTQ1MjIwfQ.Rm5MWD_C5Mb-5oD7eYOPSjZ91PyG3-CkQbf3-MXBp0c
 `;
   }
@@ -126,7 +125,7 @@ function main() {
     
     console.log('\n🎉 Environment setup complete!');
     console.log('\nNext steps:');
-    console.log('1. Update your Supabase credentials in .env');
+    console.log('1. Update your Supabase credentials in .env if needed');
     console.log('2. Deploy your Solana program: cd pharmatrace-program && ./deploy.sh');
     console.log('3. Start the development server: npm run dev');
     
