@@ -58,7 +58,7 @@ export async function initBatchOnChain(
   }
 
   const program = getPharmaProgram(wallet);
-  const batchPDA = await findBatchPDA(batchId);
+  const [batchPDA] = await findBatchPDA(batchId);
 
   return retryTransaction(async () => {
     const tx = await program.methods
