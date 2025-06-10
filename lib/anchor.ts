@@ -149,6 +149,14 @@ const IDL: Idl = {
           {
             name: "ipfsHash",
             type: "string"
+          },
+          {
+            name: "createdAt",
+            type: "i64"
+          },
+          {
+            name: "updatedAt",
+            type: "i64"
           }
         ]
       }
