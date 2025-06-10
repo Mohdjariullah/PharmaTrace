@@ -7,7 +7,7 @@ const IDL: Idl = {
   name: "pharmatrace",
   instructions: [
     {
-      name: "initBatch",
+      name: "init_batch",
       accounts: [
         {
           name: "batchAccount",
@@ -49,7 +49,7 @@ const IDL: Idl = {
       ]
     },
     {
-      name: "transferBatch",
+      name: "transfer_batch",
       accounts: [
         {
           name: "batchAccount",
@@ -70,7 +70,7 @@ const IDL: Idl = {
       args: []
     },
     {
-      name: "flagBatch",
+      name: "flag_batch",
       accounts: [
         {
           name: "batchAccount",
@@ -87,6 +87,27 @@ const IDL: Idl = {
         {
           name: "reason",
           type: "string"
+        }
+      ]
+    },
+    {
+      name: "update_batch_status",
+      accounts: [
+        {
+          name: "batchAccount",
+          isMut: true,
+          isSigner: false
+        },
+        {
+          name: "authority",
+          isMut: false,
+          isSigner: true
+        }
+      ],
+      args: [
+        {
+          name: "newStatus",
+          type: "u8"
         }
       ]
     }
