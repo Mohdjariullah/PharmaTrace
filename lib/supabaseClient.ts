@@ -1,15 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
+import { SUPABASE_CONFIG } from './config';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-// Create Supabase client with better error handling and retry logic
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+// Create Supabase client with centralized configuration
+export const supabase = createClient<Database>(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY, {
   auth: {
     persistSession: true,
     detectSessionInUrl: true,
@@ -30,7 +24,6 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
         try {
           const response = await fetch(url, {
             ...options,
-            // Add timeout
             signal: AbortSignal.timeout(10000)
           });
           
@@ -45,7 +38,6 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
             console.error('Supabase request failed after retries:', error);
             throw new Error('Failed to connect to Supabase. Please check your connection and try again.');
           }
-          // Exponential backoff
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
         }
       }
@@ -55,16 +47,13 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// For server-side only, can use service role if needed
+// For server-side only
 export const createServerSupabaseClient = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  
-  if (!url || !key) {
-    throw new Error('Missing Supabase environment variables');
+  if (!SUPABASE_CONFIG.SERVICE_ROLE_KEY) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY for server operations');
   }
 
-  return createClient<Database>(url, key, {
+  return createClient<Database>(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.SERVICE_ROLE_KEY, {
     auth: {
       persistSession: false,
     },

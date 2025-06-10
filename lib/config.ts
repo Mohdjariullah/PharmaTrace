@@ -1,0 +1,54 @@
+import { PublicKey, clusterApiUrl } from '@solana/web3.js';
+
+// Environment validation
+function validateEnvVar(name: string, value: string | undefined, defaultValue?: string): string {
+  if (!value && !defaultValue) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value || defaultValue!;
+}
+
+// Solana Configuration
+export const SOLANA_CONFIG = {
+  NETWORK: validateEnvVar('NEXT_PUBLIC_SOLANA_NETWORK', process.env.NEXT_PUBLIC_SOLANA_NETWORK, 'devnet'),
+  RPC_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_RPC', process.env.NEXT_PUBLIC_SOLANA_RPC, clusterApiUrl('devnet')),
+  WS_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_WS_ENDPOINT', process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT, 'wss://api.devnet.solana.com'),
+  PROGRAM_ID: validateEnvVar('NEXT_PUBLIC_PROGRAM_ID', process.env.NEXT_PUBLIC_PROGRAM_ID, '7QUnqWD9rAAy5PNCpvXqZxYXfPW7G9SrWKJ3osTWy2EL'),
+};
+
+// Validate Program ID format
+try {
+  new PublicKey(SOLANA_CONFIG.PROGRAM_ID);
+} catch (error) {
+  throw new Error(`Invalid NEXT_PUBLIC_PROGRAM_ID format: ${SOLANA_CONFIG.PROGRAM_ID}`);
+}
+
+// Supabase Configuration
+export const SUPABASE_CONFIG = {
+  URL: validateEnvVar('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL),
+  ANON_KEY: validateEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+};
+
+// Application Configuration
+export const APP_CONFIG = {
+  NAME: 'PharmaTrace',
+  DESCRIPTION: 'Blockchain-secured pharmaceutical supply chain tracking',
+  VERSION: '1.0.0',
+  EXPLORER_BASE_URL: SOLANA_CONFIG.NETWORK === 'mainnet-beta' 
+    ? 'https://explorer.solana.com' 
+    : `https://explorer.solana.com/?cluster=${SOLANA_CONFIG.NETWORK}`,
+};
+
+// Development helpers
+export const isDevelopment = process.env.NODE_ENV === 'development';
+export const isProduction = process.env.NODE_ENV === 'production';
+
+// Log configuration in development
+if (isDevelopment) {
+  console.log('🔧 PharmaTrace Configuration:', {
+    network: SOLANA_CONFIG.NETWORK,
+    programId: SOLANA_CONFIG.PROGRAM_ID,
+    rpcEndpoint: SOLANA_CONFIG.RPC_ENDPOINT,
+  });
+}

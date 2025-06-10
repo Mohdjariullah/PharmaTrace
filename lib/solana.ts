@@ -1,27 +1,24 @@
-import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { SOLANA_CONFIG, APP_CONFIG } from './config';
 
-// Network settings
-export const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'devnet';
-export const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC || clusterApiUrl(NETWORK as any);
+// Use centralized configuration
+export const NETWORK = SOLANA_CONFIG.NETWORK;
+export const RPC_ENDPOINT = SOLANA_CONFIG.RPC_ENDPOINT;
+export const PHARMACY_PROGRAM_ID = new PublicKey(SOLANA_CONFIG.PROGRAM_ID);
 
-// Program ID handling with validation
-const PROGRAM_ID_STRING = process.env.NEXT_PUBLIC_PROGRAM_ID || '7QUnqWD9rAAy5PNCpvXqZxYXfPW7G9SrWKJ3osTWy2EL';
-export const PHARMACY_PROGRAM_ID = new PublicKey(PROGRAM_ID_STRING);
-
-// Create connection to Solana
+// Create connection to Solana with retry logic
 export const connection = new Connection(RPC_ENDPOINT, {
   commitment: 'confirmed',
-  wsEndpoint: process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT || 'wss://api.devnet.solana.com',
+  wsEndpoint: SOLANA_CONFIG.WS_ENDPOINT,
+  confirmTransactionInitialTimeout: 60000,
 });
 
 // Helper to find PDA for batch accounts
-export async function findBatchPDA(batchId: string): Promise<PublicKey> {
-  const [pda] = await PublicKey.findProgramAddress(
+export async function findBatchPDA(batchId: string): Promise<[PublicKey, number]> {
+  return await PublicKey.findProgramAddress(
     [Buffer.from('batch'), Buffer.from(batchId)],
     PHARMACY_PROGRAM_ID
   );
-  
-  return pda;
 }
 
 // Helper to check if a string is a valid Solana public key
@@ -40,11 +37,38 @@ export function truncatePublicKey(publicKey: string): string {
   return `${publicKey.substring(0, 4)}...${publicKey.substring(publicKey.length - 4)}`;
 }
 
-// Helper to get explorer URL for transaction
+// Helper to get explorer URL for transaction or address
 export function getExplorerUrl(signature: string, type: 'tx' | 'address' = 'tx'): string {
-  const baseUrl = NETWORK === 'mainnet-beta' 
-    ? 'https://explorer.solana.com' 
-    : `https://explorer.solana.com/?cluster=${NETWORK}`;
-  
-  return `${baseUrl}/${type}/${signature}`;
+  return `${APP_CONFIG.EXPLORER_BASE_URL}/${type}/${signature}`;
+}
+
+// Helper to validate connection
+export async function validateConnection(): Promise<boolean> {
+  try {
+    const version = await connection.getVersion();
+    console.log(`✅ Connected to Solana ${NETWORK}:`, version);
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to connect to Solana:', error);
+    return false;
+  }
+}
+
+// Helper to get program info
+export async function getProgramInfo(): Promise<any> {
+  try {
+    const accountInfo = await connection.getAccountInfo(PHARMACY_PROGRAM_ID);
+    if (!accountInfo) {
+      throw new Error('Program not found on blockchain');
+    }
+    return {
+      programId: PHARMACY_PROGRAM_ID.toString(),
+      executable: accountInfo.executable,
+      owner: accountInfo.owner.toString(),
+      lamports: accountInfo.lamports,
+    };
+  } catch (error) {
+    console.error('Error getting program info:', error);
+    throw error;
+  }
 }

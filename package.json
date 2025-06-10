@@ -3,10 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "npm run setup:env && next dev",
+    "build": "npm run setup:env && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup:env": "node scripts/setup-env.js",
+    "setup": "npm run setup:env && echo 'Environment configured. Please update Supabase credentials in .env'",
+    "deploy:program": "cd pharmatrace-program && chmod +x deploy.sh && ./deploy.sh",
+    "verify:config": "node scripts/setup-env.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
