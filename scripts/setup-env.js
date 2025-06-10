@@ -5,7 +5,7 @@ const path = require('path');
 
 /**
  * Setup script to automatically configure environment variables
- * and ensure all program IDs are consistent across the application
+ * ONLY updates the program ID, preserves all other credentials
  */
 
 const CONFIG = {
@@ -15,38 +15,35 @@ const CONFIG = {
   WS_ENDPOINT: 'wss://api.devnet.solana.com',
 };
 
-function createEnvFile() {
+function updateEnvFile() {
   const envPath = path.join(process.cwd(), '.env');
-  const envExamplePath = path.join(process.cwd(), '.env.example');
   
-  // Read .env.example as template
-  let envContent = '';
-  if (fs.existsSync(envExamplePath)) {
-    envContent = fs.readFileSync(envExamplePath, 'utf8');
+  if (fs.existsSync(envPath)) {
+    let envContent = fs.readFileSync(envPath, 'utf8');
+    
+    // ONLY update Solana-related variables, preserve Supabase credentials
+    envContent = envContent.replace(
+      /NEXT_PUBLIC_PROGRAM_ID=.*/,
+      `NEXT_PUBLIC_PROGRAM_ID=${CONFIG.PROGRAM_ID}`
+    );
+    envContent = envContent.replace(
+      /NEXT_PUBLIC_SOLANA_NETWORK=.*/,
+      `NEXT_PUBLIC_SOLANA_NETWORK=${CONFIG.NETWORK}`
+    );
+    envContent = envContent.replace(
+      /NEXT_PUBLIC_SOLANA_RPC=.*/,
+      `NEXT_PUBLIC_SOLANA_RPC=${CONFIG.RPC_ENDPOINT}`
+    );
+    envContent = envContent.replace(
+      /NEXT_PUBLIC_SOLANA_WS_ENDPOINT=.*/,
+      `NEXT_PUBLIC_SOLANA_WS_ENDPOINT=${CONFIG.WS_ENDPOINT}`
+    );
+    
+    fs.writeFileSync(envPath, envContent);
+    console.log('✅ Updated .env file with program ID (Supabase credentials preserved)');
   } else {
-    // Create default .env content with valid Supabase credentials
-    envContent = `# Solana Configuration
-NEXT_PUBLIC_PROGRAM_ID=${CONFIG.PROGRAM_ID}
-NEXT_PUBLIC_SOLANA_NETWORK=${CONFIG.NETWORK}
-NEXT_PUBLIC_SOLANA_RPC=${CONFIG.RPC_ENDPOINT}
-NEXT_PUBLIC_SOLANA_WS_ENDPOINT=${CONFIG.WS_ENDPOINT}
-
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://tbplqnkbrntjonwsayur.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRicGxxbmticm50am9ud3NheXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5NjkyMjAsImV4cCI6MjA2NDU0NTIyMH0.BtDfGP7xefM4T0uTglYz_qwzq88ZxtS3KzFeJCnT2a8
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRicGxxbmticm50am9ud3NheXVyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODk2OTIyMCwiZXhwIjoyMDY0NTQ1MjIwfQ.Rm5MWD_C5Mb-5oD7eYOPSjZ91PyG3-CkQbf3-MXBp0c
-`;
+    console.log('⚠️  .env file not found. Please create it manually with your Supabase credentials.');
   }
-  
-  // Update program ID in content
-  envContent = envContent.replace(
-    /NEXT_PUBLIC_PROGRAM_ID=.*/,
-    `NEXT_PUBLIC_PROGRAM_ID=${CONFIG.PROGRAM_ID}`
-  );
-  
-  // Write .env file
-  fs.writeFileSync(envPath, envContent);
-  console.log('✅ Created/updated .env file with program ID:', CONFIG.PROGRAM_ID);
 }
 
 function updateAnchorConfig() {
@@ -102,32 +99,30 @@ function validateConfiguration() {
     const envContent = fs.readFileSync(envPath, 'utf8');
     if (envContent.includes(CONFIG.PROGRAM_ID)) {
       console.log('✅ .env file contains correct program ID');
-    } else {
-      console.log('⚠️  .env file does not contain the expected program ID');
+    }
+    if (envContent.includes('tbplqnkbrntjonwsayur.supabase.co')) {
+      console.log('✅ Supabase credentials are preserved');
     }
   }
   
   console.log('\n📋 Current Configuration:');
   console.log('  Program ID:', CONFIG.PROGRAM_ID);
   console.log('  Network:', CONFIG.NETWORK);
-  console.log('  RPC Endpoint:', CONFIG.RPC_ENDPOINT);
-  console.log('  WS Endpoint:', CONFIG.WS_ENDPOINT);
+  console.log('  Supabase URL: Preserved from existing .env');
 }
 
 function main() {
-  console.log('🚀 Setting up PharmaTrace environment...\n');
+  console.log('🚀 Updating PharmaTrace program ID only...\n');
   
   try {
-    createEnvFile();
+    updateEnvFile();
     updateAnchorConfig();
     updateRustLib();
     validateConfiguration();
     
-    console.log('\n🎉 Environment setup complete!');
-    console.log('\nNext steps:');
-    console.log('1. Update your Supabase credentials in .env if needed');
-    console.log('2. Deploy your Solana program: cd pharmatrace-program && ./deploy.sh');
-    console.log('3. Start the development server: npm run dev');
+    console.log('\n🎉 Program ID update complete!');
+    console.log('\nYour Supabase credentials have been preserved.');
+    console.log('Only the Solana program ID has been updated.');
     
   } catch (error) {
     console.error('❌ Setup failed:', error.message);
