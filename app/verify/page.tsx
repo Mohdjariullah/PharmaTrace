@@ -330,7 +330,7 @@ export default function VerifyPage() {
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         {batch.product_name}
-                        {blockchainVerified && <Zap className="h-5 w-5 text-blue-500" title="Blockchain Verified" />}
+                        {blockchainVerified && <Zap className="h-5 w-5 text-blue-500\" title="Blockchain Verified" />}
                       </CardTitle>
                       <CardDescription>
                         Batch ID: <span className="font-mono">{batch.batch_id}</span>
