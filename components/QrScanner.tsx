@@ -29,6 +29,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const startCamera = useCallback(async () => {
@@ -275,6 +276,10 @@ export default function QrScanner({ onScan }: QrScannerProps) {
     }
   };
 
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleManualSubmit = () => {
     if (!manualInput.trim()) {
       toast({
@@ -447,33 +452,33 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                 <p className="text-sm text-muted-foreground mb-6">
                   Select an image file containing a QR code to decode
                 </p>
-                <label>
-                  <Button 
-                    variant="default" 
-                    className="cursor-pointer" 
-                    size="lg"
-                    disabled={isProcessingFile}
-                  >
-                    {isProcessingFile ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Choose Image File
-                      </>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                      disabled={isProcessingFile}
-                    />
-                  </Button>
-                </label>
+                <Button 
+                  variant="default" 
+                  className="cursor-pointer" 
+                  size="lg"
+                  disabled={isProcessingFile}
+                  onClick={handleFileButtonClick}
+                >
+                  {isProcessingFile ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Choose Image File
+                    </>
+                  )}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={isProcessingFile}
+                />
               </div>
               <p className="text-xs text-muted-foreground">
                 Supported formats: JPG, PNG, WEBP, GIF (max 10MB)
