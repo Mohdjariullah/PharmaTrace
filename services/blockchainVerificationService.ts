@@ -68,14 +68,31 @@ export async function verifyTransactionOnBlockchain(txSignature: string): Promis
 
     // Get transaction details
     const message = transaction.transaction.message;
-    const accountKeys = message.staticAccountKeys || message.accountKeys;
+    const accountKeys = message.getAccountKeys();
     
-    if (!accountKeys || accountKeys.length < 2) {
-      result.error = 'Invalid transaction structure';
-      return result;
+    // Handle different account key structures
+    let toAccount: string | undefined;
+    
+    if (Array.isArray(accountKeys)) {
+      // Legacy message format
+      if (accountKeys.length < 2) {
+        result.error = 'Invalid transaction structure';
+        return result;
+      }
+      toAccount = accountKeys[1].toString();
+    } else {
+      // Versioned message format with LoadedAddresses
+      if (!accountKeys.staticAccountKeys || accountKeys.staticAccountKeys.length < 2) {
+        result.error = 'Invalid transaction structure';
+        return result;
+      }
+      toAccount = accountKeys.staticAccountKeys[1].toString();
     }
 
-    const toAccount = accountKeys[1].toString();
+    if (!toAccount) {
+      result.error = 'Could not retrieve account information';
+      return result;
+    }
 
     // Verify the transaction was sent to our PharmaTrace account
     const isPharmaTraceTransaction = toAccount === PHARMATRACE_PUBLIC_KEY.toString();

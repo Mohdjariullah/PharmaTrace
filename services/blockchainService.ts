@@ -166,15 +166,31 @@ export async function verifyBatchTransaction(txSignature: string): Promise<{
     const message = transaction.transaction.message;
     const accountKeys = message.getAccountKeys();
     
-    if (!accountKeys || accountKeys.length < 2) {
-      return {
-        isValid: false,
-        error: 'Invalid transaction structure'
-      };
+    // Handle different account key structures
+    let fromAccount: string | undefined;
+    let toAccount: string | undefined;
+    
+    if (Array.isArray(accountKeys)) {
+      // Legacy message format
+      if (accountKeys.length < 2) {
+        return {
+          isValid: false,
+          error: 'Invalid transaction structure'
+        };
+      }
+      fromAccount = accountKeys[0]?.toString();
+      toAccount = accountKeys[1]?.toString();
+    } else {
+      // Versioned message format with LoadedAddresses
+      if (!accountKeys.staticAccountKeys || accountKeys.staticAccountKeys.length < 2) {
+        return {
+          isValid: false,
+          error: 'Invalid transaction structure'
+        };
+      }
+      fromAccount = accountKeys.staticAccountKeys[0]?.toString();
+      toAccount = accountKeys.staticAccountKeys[1]?.toString();
     }
-
-    const fromAccount = accountKeys.get(0)?.toString();
-    const toAccount = accountKeys.get(1)?.toString();
 
     if (!fromAccount || !toAccount) {
       return {
