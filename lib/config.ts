@@ -13,7 +13,7 @@ export const SOLANA_CONFIG = {
   NETWORK: validateEnvVar('NEXT_PUBLIC_SOLANA_NETWORK', process.env.NEXT_PUBLIC_SOLANA_NETWORK, 'devnet'),
   RPC_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_RPC', process.env.NEXT_PUBLIC_SOLANA_RPC, clusterApiUrl('devnet')),
   WS_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_WS_ENDPOINT', process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT, 'wss://api.devnet.solana.com'),
-  PHARMATRACE_PRIVATE_KEY: validateEnvVar('PHARMATRACE_PRIVATE_KEY', process.env.PHARMATRACE_PRIVATE_KEY),
+  PHARMATRACE_PRIVATE_KEY: validateEnvVar('NEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY', process.env.NEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY),
 };
 
 // Supabase Configuration

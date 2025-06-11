@@ -35,14 +35,20 @@ function updateEnvFile() {
       `NEXT_PUBLIC_SOLANA_WS_ENDPOINT=${CONFIG.WS_ENDPOINT}`
     );
     
-    // Add or update the private key
-    if (envContent.includes('PHARMATRACE_PRIVATE_KEY=')) {
+    // Add or update the private key with NEXT_PUBLIC_ prefix
+    if (envContent.includes('NEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY=')) {
+      envContent = envContent.replace(
+        /NEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY=.*/,
+        `NEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY=${CONFIG.PHARMATRACE_PRIVATE_KEY}`
+      );
+    } else if (envContent.includes('PHARMATRACE_PRIVATE_KEY=')) {
+      // Replace old variable name with new one
       envContent = envContent.replace(
         /PHARMATRACE_PRIVATE_KEY=.*/,
-        `PHARMATRACE_PRIVATE_KEY=${CONFIG.PHARMATRACE_PRIVATE_KEY}`
+        `NEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY=${CONFIG.PHARMATRACE_PRIVATE_KEY}`
       );
     } else {
-      envContent += `\nPHARMATRACE_PRIVATE_KEY=${CONFIG.PHARMATRACE_PRIVATE_KEY}\n`;
+      envContent += `\nNEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY=${CONFIG.PHARMATRACE_PRIVATE_KEY}\n`;
     }
     
     fs.writeFileSync(envPath, envContent);
