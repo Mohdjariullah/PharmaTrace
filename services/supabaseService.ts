@@ -28,16 +28,12 @@ export async function getBatchByTxSignature(txSignature: string) {
     .from('batches')
     .select('*')
     .eq('init_tx_signature', txSignature)
-    .single();
+    .maybeSingle(); // Use maybeSingle() instead of single()
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // No rows found
-      return null;
-    }
     throw error;
   }
-  return data;
+  return data; // Will be null if no rows found
 }
 
 export async function getBatchByPDA(batchPDA: string) {
@@ -45,16 +41,12 @@ export async function getBatchByPDA(batchPDA: string) {
     .from('batches')
     .select('*')
     .eq('batch_pda', batchPDA)
-    .single();
+    .maybeSingle(); // Use maybeSingle() instead of single()
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // No rows found
-      return null;
-    }
     throw error;
   }
-  return data;
+  return data; // Will be null if no rows found
 }
 
 export async function getBatchById(batchId: string) {
@@ -62,16 +54,12 @@ export async function getBatchById(batchId: string) {
     .from('batches')
     .select('*')
     .eq('batch_id', batchId)
-    .single();
+    .maybeSingle(); // Use maybeSingle() instead of single()
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // No rows found
-      return null;
-    }
     throw error;
   }
-  return data;
+  return data; // Will be null if no rows found
 }
 
 export async function updateBatchOwner(batchId: string, newOwnerWallet: string) {
@@ -139,16 +127,12 @@ export async function getQrCodeByTxSignature(txSignature: string) {
     .from('qr_codes')
     .select('*')
     .eq('tx_signature', txSignature)
-    .single();
+    .maybeSingle(); // Use maybeSingle() instead of single()
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // No rows found
-      return null;
-    }
     throw error;
   }
-  return data;
+  return data; // Will be null if no rows found
 }
 
 export async function getQrCodesByBatch(batchId: string) {
