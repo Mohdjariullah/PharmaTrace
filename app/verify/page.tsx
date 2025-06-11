@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { formatDate, isBatchExpired } from "@/services/qrService";
 import { truncatePublicKey, getExplorerUrl } from "@/lib/solana";
 import {
