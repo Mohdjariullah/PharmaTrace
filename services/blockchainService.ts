@@ -96,7 +96,7 @@ export async function registerBatchTransaction(
       transaction.feePayer = wallet.publicKey!;
 
       // Sign transaction with wallet
-      const signedTransaction = await wallet.signTransaction(transaction);
+      const signedTransaction = await wallet.signTransaction!(transaction);
 
       // Send transaction
       const signature = await connection.sendRawTransaction(signedTransaction.serialize());
@@ -237,7 +237,7 @@ export async function transferBatchOnChain(
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = wallet.publicKey!;
 
-    const signedTransaction = await wallet.signTransaction(transaction);
+    const signedTransaction = await wallet.signTransaction!(transaction);
     const signature = await connection.sendRawTransaction(signedTransaction.serialize());
     
     await connection.confirmTransaction(signature, 'confirmed');
@@ -274,7 +274,7 @@ export async function flagBatchOnChain(
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = wallet.publicKey!;
 
-    const signedTransaction = await wallet.signTransaction(transaction);
+    const signedTransaction = await wallet.signTransaction!(transaction);
     const signature = await connection.sendRawTransaction(signedTransaction.serialize());
     
     await connection.confirmTransaction(signature, 'confirmed');
