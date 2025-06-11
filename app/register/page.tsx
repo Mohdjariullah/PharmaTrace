@@ -22,7 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useWalletContext } from "@/components/WalletProvider";
 import { format } from "date-fns";
-import { CalendarIcon, Package, Shield, Zap, CheckCircle } from "lucide-react";
+import { CalendarIcon, Package, Shield, Zap, CheckCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/popover";
 import QrGenerator from "@/components/QrGenerator";
 import { registerBatchTransaction } from "@/services/blockchainService";
-import { insertBatchMetadata, insertQrCode } from "@/services/supabaseService";
+import { insertBatchMetadata, insertQrCode, getBatchById } from "@/services/supabaseService";
 
 const registerFormSchema = z.object({
   batchId: z.string().min(3, {
@@ -90,9 +90,21 @@ export default function RegisterPage() {
     try {
       setSubmitting(true);
       
+      // First check if batch already exists
+      const existingBatch = await getBatchById(data.batchId);
+      if (existingBatch) {
+        toast({
+          title: "Batch already exists",
+          description: `A batch with ID "${data.batchId}" already exists. Please use a different batch ID.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const mfgDateStr = format(data.mfgDate, "yyyy-MM-dd");
       const expDateStr = format(data.expDate, "yyyy-MM-dd");
       
+      // Register on blockchain first
       const { txSignature, batchId, productName, batchPDA } = await registerBatchTransaction(
         wallet,
         data.batchId,
@@ -142,11 +154,14 @@ export default function RegisterPage() {
       let errorTitle = "Registration failed";
       let errorDescription = "There was an error registering your batch. Please try again.";
       
-      // Check for specific blockchain errors
+      // Check for specific errors
       if (error?.message) {
         const errorMessage = error.message.toLowerCase();
         
-        if (errorMessage.includes("insufficient sol")) {
+        if (errorMessage.includes("already exists")) {
+          errorTitle = "Batch already exists";
+          errorDescription = error.message;
+        } else if (errorMessage.includes("insufficient sol")) {
           errorTitle = "Insufficient funds";
           errorDescription = "Your wallet doesn't have enough SOL to cover transaction fees. Please add SOL to your wallet and try again.";
         } else if (errorMessage.includes("user rejected")) {
@@ -155,6 +170,9 @@ export default function RegisterPage() {
         } else if (errorMessage.includes("blockhash not found")) {
           errorTitle = "Network error";
           errorDescription = "Network congestion detected. Please wait a moment and try again.";
+        } else if (errorMessage.includes("duplicate key")) {
+          errorTitle = "Batch ID already exists";
+          errorDescription = "This batch ID is already registered. Please use a different batch ID.";
         }
       }
       
@@ -444,6 +462,21 @@ export default function RegisterPage() {
                             </FormItem>
                           )}
                         />
+                        
+                        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-1">
+                                Important: Batch ID Must Be Unique
+                              </h4>
+                              <p className="text-sm text-amber-700 dark:text-amber-300">
+                                Each batch ID can only be registered once. If you see an error about duplicate batch ID, 
+                                please choose a different identifier.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                         
                         <Button 
                           type="submit" 

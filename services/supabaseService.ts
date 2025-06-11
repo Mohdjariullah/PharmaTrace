@@ -13,7 +13,13 @@ export async function insertBatchMetadata(batch: Omit<Batch, 'id' | 'created_at'
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === '23505') {
+      // Unique constraint violation
+      throw new Error(`Batch with ID "${batch.batch_id}" already exists. Please use a different batch ID.`);
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -58,7 +64,13 @@ export async function getBatchById(batchId: string) {
     .eq('batch_id', batchId)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows found
+      return null;
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -94,6 +106,13 @@ export async function updateBatchStatus(batchId: string, status: 0 | 1 | 2) {
 
 // QR Code methods
 export async function insertQrCode(qrCode: Omit<QrCode, 'id' | 'created_at' | 'updated_at'>) {
+  // Check if QR code with this transaction signature already exists
+  const existingQr = await getQrCodeByTxSignature(qrCode.tx_signature);
+  if (existingQr) {
+    console.log('QR code already exists for this transaction, returning existing one');
+    return existingQr;
+  }
+
   const { data, error } = await supabase
     .from('qr_codes')
     .insert({
@@ -104,7 +123,14 @@ export async function insertQrCode(qrCode: Omit<QrCode, 'id' | 'created_at' | 'u
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === '23505') {
+      // Unique constraint violation - QR code already exists
+      console.log('QR code already exists, fetching existing one');
+      return await getQrCodeByTxSignature(qrCode.tx_signature);
+    }
+    throw error;
+  }
   return data;
 }
 
