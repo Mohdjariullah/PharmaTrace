@@ -48,7 +48,6 @@ import {
   Flag,
   Clock,
   QrCode as QrCodeIcon,
-  Download,
   Shield,
   AlertCircle,
   XCircle,
