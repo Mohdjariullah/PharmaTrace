@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Scan, Upload, FileText, X, RotateCcw, Camera } from 'lucide-react';
+import { Scan, Upload, FileText, X, RotateCcw, Camera, Image, Type } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { parseQrPayload } from '@/services/qrService';
 import { QrCodePayload } from '@/types';
@@ -49,12 +49,10 @@ export default function QrScanner({ onScan }: QrScannerProps) {
         await videoRef.current.play();
       }
       
-      // Reset the retry flag on successful camera access
       setTriedBothFacingModes(false);
     } catch (error: any) {
       console.error('Error accessing camera:', error);
       
-      // If we get a NotFoundError and haven't tried both facing modes yet
       if (error.name === 'NotFoundError' && !triedBothFacingModes) {
         setTriedBothFacingModes(true);
         const alternateFacingMode = facingMode === 'environment' ? 'user' : 'environment';
@@ -72,13 +70,12 @@ export default function QrScanner({ onScan }: QrScannerProps) {
             await videoRef.current.play();
           }
           
-          return; // Success with alternate camera
+          return;
         } catch (retryError: any) {
           console.error('Error accessing alternate camera:', retryError);
           setCameraError('No cameras found on this device');
         }
       } else {
-        // Set appropriate error message based on error type
         if (error.name === 'NotAllowedError') {
           setCameraError('Camera access denied. Please allow camera permissions and try again.');
         } else if (error.name === 'NotFoundError') {
@@ -231,30 +228,43 @@ export default function QrScanner({ onScan }: QrScannerProps) {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto overflow-hidden border-2 hover:border-primary/20 transition-all duration-300">
+    <Card className="w-full max-w-2xl mx-auto overflow-hidden border-2 hover:border-primary/20 transition-all duration-300 bg-white dark:bg-gray-800">
       <CardContent className="p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 mb-6">
-            <TabsTrigger value="camera" disabled={!isCameraAvailable} className="flex items-center gap-1.5">
+          <TabsList className="grid grid-cols-3 mb-6 bg-gray-100 dark:bg-gray-700">
+            <TabsTrigger 
+              value="camera" 
+              disabled={!isCameraAvailable} 
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"
+            >
               <Camera className="h-4 w-4" />
               <span className="hidden sm:inline">Camera</span>
             </TabsTrigger>
-            <TabsTrigger value="upload" className="flex items-center gap-1.5">
-              <Upload className="h-4 w-4" />
+            <TabsTrigger 
+              value="upload" 
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"
+            >
+              <Image className="h-4 w-4" />
               <span className="hidden sm:inline">Upload</span>
             </TabsTrigger>
-            <TabsTrigger value="manual" className="flex items-center gap-1.5">
-              <FileText className="h-4 w-4" />
+            <TabsTrigger 
+              value="manual" 
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"
+            >
+              <Type className="h-4 w-4" />
               <span className="hidden sm:inline">Manual</span>
             </TabsTrigger>
           </TabsList>
           
           <TabsContent value="camera">
-            <div className="relative aspect-square bg-muted rounded-lg overflow-hidden mb-4">
+            <div className="relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden mb-6 border-2 border-dashed border-gray-300 dark:border-gray-600">
               {cameraError ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                  <div className="text-destructive mb-2">Camera Error</div>
-                  <div className="text-sm text-muted-foreground text-center mb-4">{cameraError}</div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  <div className="rounded-full bg-red-100 dark:bg-red-900 p-4 mb-4">
+                    <X className="h-8 w-8 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div className="text-red-600 dark:text-red-400 font-medium mb-2">Camera Error</div>
+                  <div className="text-sm text-red-500 dark:text-red-300 text-center mb-4">{cameraError}</div>
                   <Button 
                     size="sm" 
                     onClick={() => {
@@ -262,7 +272,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                       setTriedBothFacingModes(false);
                       startCamera();
                     }} 
-                    className="flex items-center gap-1.5"
+                    className="flex items-center gap-2"
                   >
                     <RotateCcw className="h-4 w-4" />
                     Try Again
@@ -281,7 +291,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                     className="absolute inset-0 w-full h-full object-cover opacity-0"
                   />
                   {!scanning && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                       <Skeleton className="w-16 h-16 rounded-full" />
                     </div>
                   )}
@@ -290,23 +300,34 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                       size="sm"
                       variant="secondary"
                       onClick={toggleCamera}
-                      className="backdrop-blur-lg bg-background/80"
+                      className="backdrop-blur-lg bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-700"
                     >
                       Switch Camera
                     </Button>
+                  </div>
+                  
+                  {/* Scanning overlay */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-8 border-2 border-white/50 rounded-lg">
+                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
+                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
+                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
+                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
+                    </div>
                   </div>
                 </>
               )}
             </div>
             <div className="text-sm text-center text-muted-foreground mb-4">
-              Position the QR code within the camera view
+              Position the QR code within the scanning area
             </div>
             <div className="flex justify-center">
               <Button 
                 variant={scanning ? "destructive" : "default"} 
                 onClick={scanning ? stopCamera : startCamera}
                 disabled={cameraError !== null}
-                className="flex items-center gap-1.5 min-w-[140px]"
+                className="flex items-center gap-2 min-w-[160px]"
+                size="lg"
               >
                 {scanning ? (
                   <>
@@ -323,14 +344,18 @@ export default function QrScanner({ onScan }: QrScannerProps) {
           
           <TabsContent value="upload">
             <div className="flex flex-col items-center">
-              <div className="w-full border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center mb-4 hover:border-primary/50 transition-colors">
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground mb-4">
-                  Upload an image containing a QR code
+              <div className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-12 text-center mb-6 hover:border-primary/50 transition-colors bg-gray-50 dark:bg-gray-700/50">
+                <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-4 mb-4 inline-flex">
+                  <Upload className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="font-medium mb-2">Upload QR Code Image</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Select an image file containing a QR code to decode
                 </p>
                 <label>
-                  <Button variant="secondary" className="cursor-pointer">
-                    Select Image
+                  <Button variant="default" className="cursor-pointer" size="lg">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Choose Image File
                     <input
                       type="file"
                       accept="image/*"
@@ -341,30 +366,33 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                 </label>
               </div>
               <p className="text-xs text-muted-foreground">
-                Supported formats: JPG, PNG, WEBP
+                Supported formats: JPG, PNG, WEBP, GIF
               </p>
             </div>
           </TabsContent>
           
           <TabsContent value="manual">
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Paste the QR code JSON content below:
+                <h3 className="font-medium mb-2">Manual QR Code Entry</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Paste the QR code JSON content below if you have it available:
                 </p>
                 <Textarea
                   placeholder='{"txSignature": "...", "batchId": "...", "medicineName": "...", "ownerAddress": "...", "timestamp": "..."}'
                   value={manualInput}
                   onChange={(e) => setManualInput(e.target.value)}
-                  className="min-h-[150px] font-mono text-xs"
+                  className="min-h-[120px] font-mono text-xs bg-gray-50 dark:bg-gray-700"
                 />
               </div>
               <Button
                 onClick={handleManualSubmit}
                 disabled={!manualInput.trim()}
                 className="w-full"
+                size="lg"
               >
-                Verify
+                <FileText className="h-4 w-4 mr-2" />
+                Parse QR Data
               </Button>
             </div>
           </TabsContent>
