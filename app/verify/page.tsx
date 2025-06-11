@@ -29,16 +29,13 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDate, isBatchExpired } from "@/services/qrService";
 import { truncatePublicKey, getExplorerUrl } from "@/lib/solana";
 import {
-  getBatchByPDA,
+  getBatchByTxSignature,
   getTransfersByBatch,
   getFlagsByBatch,
+  getQrCodeByTxSignature,
 } from "@/services/supabaseService";
-import { 
-  verifyBatchOnBlockchain, 
-  crossVerifyBatch, 
-  getVerificationReport 
-} from "@/services/blockchainVerificationService";
-import { Batch, BatchTransfer, BatchFlag } from "@/types";
+import { verifyBatchTransaction } from "@/services/blockchainService";
+import { Batch, BatchTransfer, BatchFlag, QrCode } from "@/types";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -49,7 +46,7 @@ import {
   ArrowRightLeft,
   Flag,
   Clock,
-  QrCode,
+  QrCode as QrCodeIcon,
   Download,
   Shield,
   AlertCircle,
@@ -61,23 +58,24 @@ import QrGenerator from "@/components/QrGenerator";
 
 export default function VerifyPage() {
   const searchParams = useSearchParams();
-  const batchPDA = searchParams.get("batchPDA");
+  const txSignature = searchParams.get("txSignature");
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(true);
   const [batch, setBatch] = useState<Batch | null>(null);
+  const [qrCode, setQrCode] = useState<QrCode | null>(null);
   const [transfers, setTransfers] = useState<BatchTransfer[]>([]);
   const [flags, setFlags] = useState<BatchFlag[]>([]);
   const [showQr, setShowQr] = useState(false);
-  const [verificationReport, setVerificationReport] = useState<any>(null);
+  const [verificationResult, setVerificationResult] = useState<any>(null);
   const [blockchainVerified, setBlockchainVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     const fetchBatchData = async () => {
-      if (!batchPDA) {
+      if (!txSignature) {
         toast({
-          title: "Missing Batch PDA",
-          description: "No batch PDA provided for verification.",
+          title: "Missing Transaction Signature",
+          description: "No transaction signature provided for verification.",
           variant: "destructive",
         });
         setLoading(false);
@@ -87,40 +85,32 @@ export default function VerifyPage() {
       try {
         setLoading(true);
         
-        // First, verify on blockchain
-        console.log('🔍 Verifying batch on blockchain...');
-        const report = await getVerificationReport(batchPDA);
-        setVerificationReport(report);
-        setBlockchainVerified(report.verification.isOnBlockchain);
+        // First, verify the transaction on blockchain
+        console.log('🔍 Verifying transaction on blockchain...');
+        const verification = await verifyBatchTransaction(txSignature);
+        setVerificationResult(verification);
+        setBlockchainVerified(verification.isValid);
         
-        if (!report.verification.isOnBlockchain) {
-          // If not on blockchain, it's fake - don't proceed with database lookup
+        if (!verification.isValid) {
+          // If not valid on blockchain, it's fake
           toast({
-            title: "⚠️ FAKE MEDICINE DETECTED",
-            description: "This batch was not found on the blockchain. This may be counterfeit medicine.",
+            title: "⚠️ INVALID TRANSACTION",
+            description: verification.error || "This transaction was not found on the blockchain.",
             variant: "destructive",
           });
           setLoading(false);
           return;
         }
         
-        // If on blockchain, fetch from database for additional details
-        const batchData = await getBatchByPDA(batchPDA);
+        // If valid on blockchain, fetch from database for additional details
+        const [batchData, qrCodeData] = await Promise.all([
+          getBatchByTxSignature(txSignature),
+          getQrCodeByTxSignature(txSignature)
+        ]);
         
         if (batchData) {
-          // Cross-verify blockchain and database data
-          const crossVerification = await crossVerifyBatch(batchPDA, batchData);
-          
-          if (!crossVerification.isConsistent) {
-            console.warn('⚠️ Data inconsistency detected:', crossVerification.discrepancies);
-            toast({
-              title: "Data Inconsistency",
-              description: "Discrepancies found between blockchain and database records.",
-              variant: "destructive",
-            });
-          }
-          
           setBatch(batchData);
+          setQrCode(qrCodeData);
           
           // Fetch related transfers and flags
           const [transfersData, flagsData] = await Promise.all([
@@ -135,34 +125,16 @@ export default function VerifyPage() {
           if (batchData.status !== 2 && isBatchExpired(batchData.exp_date)) {
             setBatch({ ...batchData, status: 2 });
           }
-        } else {
-          // Batch exists on blockchain but not in database
-          // Use blockchain data to create a minimal batch object
-          if (report.verification.batch) {
-            const blockchainBatch = report.verification.batch;
-            const minimalBatch: Batch = {
-              batch_id: blockchainBatch.batchId,
-              product_name: blockchainBatch.productName,
-              manufacturer_wallet: blockchainBatch.manufacturer.toString(),
-              current_owner_wallet: blockchainBatch.currentOwner.toString(),
-              mfg_date: blockchainBatch.mfgDate,
-              exp_date: blockchainBatch.expDate,
-              status: blockchainBatch.status as 0 | 1 | 2,
-              ipfs_hash: blockchainBatch.ipfsHash || null,
-              batch_pda: batchPDA,
-              init_tx_signature: 'N/A',
-              created_at: new Date(blockchainBatch.createdAt * 1000).toISOString(),
-              updated_at: new Date(blockchainBatch.updatedAt * 1000).toISOString(),
-            };
-            setBatch(minimalBatch);
-          }
+        } else if (qrCodeData) {
+          // We have QR code data but no batch data
+          setQrCode(qrCodeData);
         }
         
       } catch (error) {
         console.error("Error fetching batch data:", error);
         toast({
           title: "Verification Failed",
-          description: "Unable to verify this batch. Please try again.",
+          description: "Unable to verify this transaction. Please try again.",
           variant: "destructive",
         });
       } finally {
@@ -171,9 +143,9 @@ export default function VerifyPage() {
     };
     
     fetchBatchData();
-  }, [batchPDA, toast]);
+  }, [txSignature, toast]);
 
-  if (!batchPDA) {
+  if (!txSignature) {
     return (
       <div className="space-y-8">
         <PageHeader
@@ -183,13 +155,13 @@ export default function VerifyPage() {
         
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
-            <CardTitle>No Batch to Verify</CardTitle>
+            <CardTitle>No Transaction to Verify</CardTitle>
             <CardDescription>
-              No batch PDA was provided for verification.
+              No transaction signature was provided for verification.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p>Please scan a QR code or provide a batch PDA to verify a batch.</p>
+            <p>Please scan a QR code or provide a transaction signature to verify a batch.</p>
           </CardContent>
           <CardFooter>
             <Button asChild>
@@ -213,98 +185,87 @@ export default function VerifyPage() {
       ) : (
         <div className="space-y-6">
           {/* Blockchain Verification Alert */}
-          {verificationReport && (
+          {verificationResult && (
             <Alert className={`border-2 ${
-              verificationReport.securityLevel === 'high' 
+              verificationResult.isValid 
                 ? 'border-green-500 bg-green-50 dark:bg-green-950' 
-                : verificationReport.securityLevel === 'medium'
-                ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950'
-                : verificationReport.securityLevel === 'low'
-                ? 'border-orange-500 bg-orange-50 dark:bg-orange-950'
                 : 'border-red-500 bg-red-50 dark:bg-red-950'
             }`}>
               <div className="flex items-center gap-2">
-                {verificationReport.securityLevel === 'high' && <Shield className="h-5 w-5 text-green-600" />}
-                {verificationReport.securityLevel === 'medium' && <AlertTriangle className="h-5 w-5 text-yellow-600" />}
-                {verificationReport.securityLevel === 'low' && <AlertCircle className="h-5 w-5 text-orange-600" />}
-                {verificationReport.securityLevel === 'invalid' && <XCircle className="h-5 w-5 text-red-600" />}
+                {verificationResult.isValid ? (
+                  <Shield className="h-5 w-5 text-green-600" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600" />
+                )}
                 <AlertTitle className="text-lg font-semibold">
-                  {verificationReport.securityLevel === 'high' && 'Authentic Medicine ✅'}
-                  {verificationReport.securityLevel === 'medium' && 'Verified but Flagged ⚠️'}
-                  {verificationReport.securityLevel === 'low' && 'Data Issues Detected ⚠️'}
-                  {verificationReport.securityLevel === 'invalid' && 'FAKE MEDICINE DETECTED ❌'}
+                  {verificationResult.isValid ? 'Authentic Transaction ✅' : 'INVALID TRANSACTION ❌'}
                 </AlertTitle>
               </div>
               <AlertDescription className="mt-2">
-                <div className="space-y-2">
-                  {verificationReport.recommendations.map((rec: string, index: number) => (
-                    <div key={index} className="text-sm">{rec}</div>
-                  ))}
-                </div>
-                
-                {/* Verification Details */}
-                <div className="mt-4 p-3 bg-background/50 rounded-lg">
-                  <div className="text-sm font-medium mb-2">Blockchain Verification Details:</div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="flex justify-between">
-                      <span>PDA Exists:</span>
-                      <span className={verificationReport.verification.verificationDetails.pdaExists ? 'text-green-600' : 'text-red-600'}>
-                        {verificationReport.verification.verificationDetails.pdaExists ? '✅' : '❌'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Program Owned:</span>
-                      <span className={verificationReport.verification.verificationDetails.programOwned ? 'text-green-600' : 'text-red-600'}>
-                        {verificationReport.verification.verificationDetails.programOwned ? '✅' : '❌'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Data Valid:</span>
-                      <span className={verificationReport.verification.verificationDetails.accountDataValid ? 'text-green-600' : 'text-red-600'}>
-                        {verificationReport.verification.verificationDetails.accountDataValid ? '✅' : '❌'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Status:</span>
-                      <span className={
-                        verificationReport.verification.verificationDetails.statusCheck === 'valid' ? 'text-green-600' :
-                        verificationReport.verification.verificationDetails.statusCheck === 'expired' ? 'text-orange-600' :
-                        verificationReport.verification.verificationDetails.statusCheck === 'flagged' ? 'text-red-600' : 'text-gray-600'
-                      }>
-                        {verificationReport.verification.verificationDetails.statusCheck.toUpperCase()}
-                      </span>
+                {verificationResult.isValid ? (
+                  <div className="space-y-2">
+                    <div className="text-sm">This transaction has been verified on the Solana blockchain.</div>
+                    <div className="mt-4 p-3 bg-background/50 rounded-lg">
+                      <div className="text-sm font-medium mb-2">Transaction Details:</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span>From:</span>
+                          <span className="font-mono">{truncatePublicKey(verificationResult.fromAccount || '')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>To:</span>
+                          <span className="font-mono">{truncatePublicKey(verificationResult.toAccount || '')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Amount:</span>
+                          <span>{((verificationResult.amount || 0) / 1000000000).toFixed(6)} SOL</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Time:</span>
+                          <span>{verificationResult.timestamp ? new Date(verificationResult.timestamp * 1000).toLocaleString() : 'Unknown'}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-red-800 dark:text-red-200">
+                      {verificationResult.error || 'Transaction not found on blockchain'}
+                    </div>
+                    <div className="text-sm">
+                      This may be a fake QR code or an invalid transaction signature.
+                    </div>
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           )}
 
-          {!batch && blockchainVerified === false ? (
+          {!verificationResult?.isValid ? (
             <Card className="max-w-2xl mx-auto border-red-500 bg-red-50 dark:bg-red-950">
               <CardHeader>
                 <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
                   <XCircle className="h-6 w-6" />
-                  FAKE MEDICINE DETECTED
+                  INVALID TRANSACTION
                 </CardTitle>
                 <CardDescription className="text-red-600 dark:text-red-400">
-                  This batch was not found on the Solana blockchain.
+                  This transaction was not found on the Solana blockchain.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="p-4 bg-red-100 dark:bg-red-900 rounded-lg">
-                    <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2">⚠️ DANGER - DO NOT CONSUME</h3>
+                    <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2">⚠️ WARNING - POTENTIALLY FAKE</h3>
                     <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
-                      <li>• This product is not registered in our blockchain system</li>
-                      <li>• It may be counterfeit, expired, or tampered with</li>
-                      <li>• Consuming fake medicine can be dangerous to your health</li>
-                      <li>• Report this to local authorities immediately</li>
+                      <li>• This transaction is not registered on the blockchain</li>
+                      <li>• The QR code may be counterfeit or tampered with</li>
+                      <li>• Do not trust this product without proper verification</li>
+                      <li>• Report suspicious products to authorities</li>
                     </ul>
                   </div>
                   
                   <div className="text-sm text-muted-foreground">
-                    <strong>Batch PDA:</strong> <span className="font-mono">{batchPDA}</span>
+                    <strong>Transaction Signature:</strong> <span className="font-mono break-all">{txSignature}</span>
                   </div>
                   
                   <div className="text-sm text-muted-foreground">
@@ -317,11 +278,13 @@ export default function VerifyPage() {
                   <Link href="/scan">Scan Another QR Code</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="tel:911">Report to Authorities</Link>
+                  <a href={getExplorerUrl(txSignature)} target="_blank" rel="noopener noreferrer">
+                    Check on Explorer
+                  </a>
                 </Button>
               </CardFooter>
             </Card>
-          ) : batch ? (
+          ) : (
             <div className="grid gap-6 lg:grid-cols-3">
               {/* Batch Information Card */}
               <Card className="lg:col-span-2">
@@ -329,15 +292,21 @@ export default function VerifyPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="flex items-center gap-2">
-                        {batch.product_name}
-                        {blockchainVerified && <Zap className="h-5 w-5 text-blue-500\" title="Blockchain Verified" />}
+                        {batch?.product_name || qrCode?.medicine_name || 'Unknown Product'}
+                        <Zap className="h-5 w-5 text-blue-500" title="Blockchain Verified" />
                       </CardTitle>
                       <CardDescription>
-                        Batch ID: <span className="font-mono">{batch.batch_id}</span>
+                        {batch ? (
+                          <>Batch ID: <span className="font-mono">{batch.batch_id}</span></>
+                        ) : qrCode ? (
+                          <>Batch ID: <span className="font-mono">{qrCode.batch_id}</span></>
+                        ) : (
+                          <>Transaction: <span className="font-mono">{truncatePublicKey(txSignature)}</span></>
+                        )}
                       </CardDescription>
                     </div>
                     
-                    <StatusBadge status={batch.status} expDate={batch.exp_date} />
+                    {batch && <StatusBadge status={batch.status} expDate={batch.exp_date} />}
                   </div>
                 </CardHeader>
                 
@@ -345,29 +314,64 @@ export default function VerifyPage() {
                   <div className="space-y-6">
                     {/* Basic Info */}
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <div className="text-sm text-muted-foreground">Manufacturer</div>
-                        <div className="font-mono text-sm break-all">
-                          {batch.manufacturer_wallet}
+                      {batch ? (
+                        <>
+                          <div className="space-y-1">
+                            <div className="text-sm text-muted-foreground">Manufacturer</div>
+                            <div className="font-mono text-sm break-all">
+                              {batch.manufacturer_wallet}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="text-sm text-muted-foreground">Current Owner</div>
+                            <div className="font-mono text-sm break-all">
+                              {batch.current_owner_wallet}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="text-sm text-muted-foreground">Manufacturing Date</div>
+                            <div>{formatDate(batch.mfg_date)}</div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="text-sm text-muted-foreground">Expiry Date</div>
+                            <div>{formatDate(batch.exp_date)}</div>
+                          </div>
+                        </>
+                      ) : qrCode ? (
+                        <>
+                          <div className="space-y-1">
+                            <div className="text-sm text-muted-foreground">Medicine Name</div>
+                            <div>{qrCode.medicine_name}</div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="text-sm text-muted-foreground">Owner Address</div>
+                            <div className="font-mono text-sm break-all">
+                              {qrCode.owner_address}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="text-sm text-muted-foreground">Batch ID</div>
+                            <div className="font-mono">{qrCode.batch_id}</div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="text-sm text-muted-foreground">Registration Date</div>
+                            <div>{formatDate(qrCode.created_at || '')}</div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="col-span-2 text-center text-muted-foreground">
+                          <div className="flex justify-center mb-2">
+                            <PackageCheck className="h-8 w-8 opacity-20" />
+                          </div>
+                          <p>Transaction verified but no batch details found in database.</p>
                         </div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="text-sm text-muted-foreground">Current Owner</div>
-                        <div className="font-mono text-sm break-all">
-                          {batch.current_owner_wallet}
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="text-sm text-muted-foreground">Manufacturing Date</div>
-                        <div>{formatDate(batch.mfg_date)}</div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="text-sm text-muted-foreground">Expiry Date</div>
-                        <div>{formatDate(batch.exp_date)}</div>
-                      </div>
+                      )}
                     </div>
                     
                     <Separator />
@@ -378,34 +382,34 @@ export default function VerifyPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                           <div className="rounded-full p-1.5 bg-primary/10">
-                            {batch.status === 0 ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
-                            ) : (
-                              <AlertTriangle className="h-5 w-5 text-amber-500" />
-                            )}
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
                           </div>
                           <div>
-                            <div className="font-medium">Authenticity</div>
+                            <div className="font-medium">Blockchain Verified</div>
                             <div className="text-sm text-muted-foreground">
-                              {batch.status === 0 
-                                ? "This batch is authentic and has not been flagged"
-                                : batch.status === 1
-                                  ? "This batch has been flagged as suspicious"
-                                  : "This batch has expired"}
+                              This transaction has been verified on the Solana blockchain
                             </div>
                           </div>
                         </div>
                         
                         <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                           <div className="rounded-full p-1.5 bg-primary/10">
-                            <Calendar className="h-5 w-5 text-primary" />
+                            {batch?.status === 1 ? (
+                              <AlertTriangle className="h-5 w-5 text-amber-500" />
+                            ) : (
+                              <Calendar className="h-5 w-5 text-primary" />
+                            )}
                           </div>
                           <div>
-                            <div className="font-medium">Expiration</div>
+                            <div className="font-medium">Status</div>
                             <div className="text-sm text-muted-foreground">
-                              {isBatchExpired(batch.exp_date)
-                                ? `Expired on ${formatDate(batch.exp_date)}`
-                                : `Valid until ${formatDate(batch.exp_date)}`}
+                              {batch ? (
+                                batch.status === 1 ? "Flagged as suspicious" :
+                                batch.status === 2 ? "Expired" :
+                                isBatchExpired(batch.exp_date) ? "Expired" : "Valid"
+                              ) : (
+                                "Transaction verified"
+                              )}
                             </div>
                           </div>
                         </div>
@@ -419,11 +423,11 @@ export default function VerifyPage() {
                       <h3 className="text-lg font-medium mb-3">Blockchain Information</h3>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Batch PDA</span>
+                          <span className="text-sm text-muted-foreground">Transaction Signature</span>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm">{truncatePublicKey(batch.batch_pda)}</span>
+                            <span className="font-mono text-sm">{truncatePublicKey(txSignature)}</span>
                             <a 
-                              href={getExplorerUrl(batch.batch_pda, 'address')} 
+                              href={getExplorerUrl(txSignature)} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="text-primary hover:text-primary/80"
@@ -433,13 +437,13 @@ export default function VerifyPage() {
                           </div>
                         </div>
                         
-                        {batch.init_tx_signature !== 'N/A' && (
+                        {verificationResult?.fromAccount && (
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Initial Transaction</span>
+                            <span className="text-sm text-muted-foreground">From Account</span>
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm">{truncatePublicKey(batch.init_tx_signature)}</span>
+                              <span className="font-mono text-sm">{truncatePublicKey(verificationResult.fromAccount)}</span>
                               <a 
-                                href={getExplorerUrl(batch.init_tx_signature)} 
+                                href={getExplorerUrl(verificationResult.fromAccount, 'address')} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="text-primary hover:text-primary/80"
@@ -450,32 +454,35 @@ export default function VerifyPage() {
                           </div>
                         )}
                         
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Registration Date</span>
-                          <span>{formatDate(batch.created_at || '')}</span>
-                        </div>
-                        
-                        {batch.ipfs_hash && (
+                        {verificationResult?.toAccount && (
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">IPFS Hash</span>
-                            <span className="font-mono text-sm">{truncatePublicKey(batch.ipfs_hash)}</span>
+                            <span className="text-sm text-muted-foreground">To Account (PharmaTrace)</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm">{truncatePublicKey(verificationResult.toAccount)}</span>
+                              <a 
+                                href={getExplorerUrl(verificationResult.toAccount, 'address')} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-primary hover:text-primary/80"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {verificationResult?.timestamp && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Transaction Time</span>
+                            <span>{new Date(verificationResult.timestamp * 1000).toLocaleString()}</span>
                           </div>
                         )}
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Blockchain Verified</span>
+                          <span className="text-sm text-muted-foreground">Verification Status</span>
                           <div className="flex items-center gap-1">
-                            {blockchainVerified ? (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                <span className="text-green-600 text-sm">Yes</span>
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="h-4 w-4 text-red-600" />
-                                <span className="text-red-600 text-sm">No</span>
-                              </>
-                            )}
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <span className="text-green-600 text-sm">Verified</span>
                           </div>
                         </div>
                       </div>
@@ -485,7 +492,7 @@ export default function VerifyPage() {
                 
                 <CardFooter className="flex justify-between">
                   <Button variant="outline" onClick={() => setShowQr(!showQr)}>
-                    <QrCode className="h-4 w-4 mr-2" />
+                    <QrCodeIcon className="h-4 w-4 mr-2" />
                     {showQr ? "Hide QR Code" : "Show QR Code"}
                   </Button>
                   
@@ -499,8 +506,13 @@ export default function VerifyPage() {
               
               {/* QR Code or Activity */}
               <div>
-                {showQr ? (
-                  <QrGenerator batchPDA={batch.batch_pda} />
+                {showQr && qrCode ? (
+                  <QrGenerator 
+                    txSignature={qrCode.tx_signature}
+                    batchId={qrCode.batch_id}
+                    medicineName={qrCode.medicine_name}
+                    ownerAddress={qrCode.owner_address}
+                  />
                 ) : (
                   <Card className="h-full">
                     <CardHeader className="pb-3">
@@ -635,26 +647,6 @@ export default function VerifyPage() {
                 )}
               </div>
             </div>
-          ) : (
-            <Card className="max-w-2xl mx-auto">
-              <CardHeader>
-                <CardTitle>Batch Not Found</CardTitle>
-                <CardDescription>
-                  The batch with the provided PDA could not be found.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p>This batch may not be registered or the PDA may be invalid.</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Batch PDA: <span className="font-mono">{batchPDA}</span>
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Button asChild>
-                  <Link href="/scan">Scan Another QR Code</Link>
-                </Button>
-              </CardFooter>
-            </Card>
           )}
         </div>
       )}
