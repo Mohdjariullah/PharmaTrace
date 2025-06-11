@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatDate, isBatchExpired } from "@/services/qrService";
 import { truncatePublicKey } from "@/lib/solana";
 import { Eye, Flag, Package, Calendar, ArrowRightLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 interface BatchCardProps {
@@ -17,14 +18,24 @@ interface BatchCardProps {
 }
 
 export default function BatchCard({ batch, onViewDetails, onFlag, showActions = true }: BatchCardProps) {
-  let status: { label: string; variant: "default" | "warning" | "destructive"; icon: any } = {
+  let status: { 
+    label: string; 
+    variant: "default" | "destructive" | "outline" | "secondary"; 
+    icon: any;
+    className?: string;
+  } = {
     label: "Valid",
     variant: "default",
     icon: Package
   };
   
   if (batch.status === 1) {
-    status = { label: "Flagged", variant: "warning", icon: Flag };
+    status = { 
+      label: "Flagged", 
+      variant: "outline", 
+      icon: Flag,
+      className: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+    };
   } else if (batch.status === 2 || isBatchExpired(batch.exp_date)) {
     status = { label: "Expired", variant: "destructive", icon: Calendar };
   }
@@ -38,7 +49,10 @@ export default function BatchCard({ batch, onViewDetails, onFlag, showActions = 
           <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
             {batch.product_name}
           </CardTitle>
-          <Badge variant={status.variant} className="flex items-center gap-1.5 py-1 px-2">
+          <Badge 
+            variant={status.variant} 
+            className={cn("flex items-center gap-1.5 py-1 px-2", status.className)}
+          >
             <StatusIcon className="h-3.5 w-3.5" />
             {status.label}
           </Badge>
