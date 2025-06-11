@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npm run setup:env && next dev",
-    "build": "npm run setup:env && next build",
+    "dev": "npm run setup:env && dotenv -e .env -- next dev",
+    "build": "npm run setup:env && dotenv -e .env -- next build",
     "start": "next start",
     "lint": "next lint",
     "setup:env": "node scripts/setup-env.js",
@@ -87,5 +87,8 @@
     "typescript": "5.2.2",
     "vaul": "^0.9.9",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^7.3.0"
   }
 }
