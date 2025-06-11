@@ -62,6 +62,7 @@ export default function RegisterPage() {
     txSignature: string;
     batchId: string;
     productName: string;
+    batchPDA: string;
   } | null>(null);
   
   const form = useForm<RegisterFormValues>({
@@ -91,7 +92,7 @@ export default function RegisterPage() {
       const mfgDateStr = format(data.mfgDate, "yyyy-MM-dd");
       const expDateStr = format(data.expDate, "yyyy-MM-dd");
       
-      const { txSignature, batchId, productName } = await registerBatchTransaction(
+      const { txSignature, batchId, productName, batchPDA } = await registerBatchTransaction(
         wallet,
         data.batchId,
         data.productName,
@@ -108,10 +109,11 @@ export default function RegisterPage() {
         exp_date: expDateStr,
         status: 0,
         ipfs_hash: data.ipfsHash || null,
-        tx_signature: txSignature,
+        batch_pda: batchPDA,
+        init_tx_signature: txSignature,
       });
       
-      setRegisteredBatch({ txSignature, batchId, productName });
+      setRegisteredBatch({ txSignature, batchId, productName, batchPDA });
       
       toast({
         title: "Batch registered successfully",
@@ -226,6 +228,10 @@ export default function RegisterPage() {
                           <span className="text-muted-foreground">Transaction:</span>
                           <span className="font-mono text-sm">{registeredBatch.txSignature.substring(0, 8)}...</span>
                         </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Batch PDA:</span>
+                          <span className="font-mono text-sm">{registeredBatch.batchPDA.substring(0, 8)}...</span>
+                        </div>
                       </div>
                     </div>
                     
@@ -243,7 +249,7 @@ export default function RegisterPage() {
                           Register Another Batch
                         </Button>
                         <Button 
-                          onClick={() => router.push(`/verify?txSignature=${registeredBatch.txSignature}`)}
+                          onClick={() => router.push(`/verify?batchPDA=${registeredBatch.batchPDA}`)}
                           size="sm"
                         >
                           View Verification
@@ -254,7 +260,7 @@ export default function RegisterPage() {
                   
                   <div className="flex justify-center">
                     <QrGenerator 
-                      txSignature={registeredBatch.txSignature}
+                      batchPDA={registeredBatch.batchPDA}
                       batchId={registeredBatch.batchId}
                       medicineName={registeredBatch.productName}
                       size={280} 
@@ -492,7 +498,7 @@ export default function RegisterPage() {
                         <div>
                           <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Generate QR Code</h4>
                           <p className="text-sm text-green-700 dark:text-green-300">
-                            A unique QR code is created with the transaction hash and batch info.
+                            A unique QR code is created with the batch PDA and batch info.
                           </p>
                         </div>
                       </div>

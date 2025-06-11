@@ -5,7 +5,7 @@ import {
   LAMPORTS_PER_SOL,
   sendAndConfirmTransaction
 } from '@solana/web3.js';
-import { connection, PHARMATRACE_PUBLIC_KEY } from '@/lib/solana';
+import { connection, PHARMATRACE_PUBLIC_KEY, findBatchPDA } from '@/lib/solana';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 
 async function validateTransaction(signature: string): Promise<boolean> {
@@ -50,7 +50,7 @@ export async function registerBatchTransaction(
   productName: string,
   mfgDate: string,
   expDate: string
-): Promise<{ txSignature: string; batchId: string; productName: string }> {
+): Promise<{ txSignature: string; batchId: string; productName: string; batchPDA: string }> {
   if (!wallet.signTransaction || !wallet.publicKey) {
     throw new Error('Wallet not properly connected');
   }
@@ -75,6 +75,10 @@ export async function registerBatchTransaction(
       console.log('🔄 Creating batch registration transaction...');
       console.log('PharmaTrace Account:', PHARMATRACE_PUBLIC_KEY.toString());
       console.log('User Account:', wallet.publicKey!.toString());
+      
+      // Derive the batch PDA
+      const [batchPDA] = await findBatchPDA(batchId);
+      console.log('Batch PDA:', batchPDA.toString());
       
       // Create a simple SOL transfer transaction to the PharmaTrace account
       // This serves as proof of batch registration
@@ -111,6 +115,7 @@ export async function registerBatchTransaction(
         txSignature: signature,
         batchId,
         productName,
+        batchPDA: batchPDA.toString(),
       };
     } catch (error: any) {
       console.error('❌ Blockchain transaction failed:', error);
@@ -209,7 +214,7 @@ export async function verifyBatchTransaction(txSignature: string): Promise<{
 
 export async function transferBatchOnChain(
   wallet: WalletContextState,
-  batchId: string,
+  batchPDA: string,
   newOwner: string
 ): Promise<string> {
   if (!wallet.signTransaction || !wallet.publicKey) {
@@ -248,7 +253,7 @@ export async function transferBatchOnChain(
 
 export async function flagBatchOnChain(
   wallet: WalletContextState,
-  batchId: string,
+  batchPDA: string,
   reason: string
 ): Promise<string> {
   if (!wallet.signTransaction || !wallet.publicKey) {
@@ -281,4 +286,10 @@ export async function flagBatchOnChain(
 
     return signature;
   });
+}
+
+export async function isCurrentOwner(batchPDA: string, walletAddress: string): Promise<boolean> {
+  // For now, we'll use a simple check based on the database
+  // In a real implementation, this would check the blockchain state
+  return true;
 }

@@ -1,9 +1,9 @@
 import QRCode from 'qrcode';
 import { QrCodePayload } from '@/types';
 
-export function generateQrPayload(txSignature: string, batchId: string, medicineName: string): string {
+export function generateQrPayload(batchPDA: string, batchId: string, medicineName: string): string {
   const payload: QrCodePayload = {
-    txSignature,
+    batchPDA,
     batchId,
     medicineName,
     timestamp: new Date().toISOString(),
@@ -33,7 +33,7 @@ export function parseQrPayload(data: string): QrCodePayload | null {
   try {
     const parsed = JSON.parse(data);
     if (parsed && 
-        typeof parsed.txSignature === 'string' && 
+        typeof parsed.batchPDA === 'string' && 
         typeof parsed.batchId === 'string' && 
         typeof parsed.medicineName === 'string' &&
         typeof parsed.timestamp === 'string') {

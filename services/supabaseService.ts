@@ -21,10 +21,27 @@ export async function getBatchByTxSignature(txSignature: string) {
   const { data, error } = await supabase
     .from('batches')
     .select('*')
-    .eq('tx_signature', txSignature)
+    .eq('init_tx_signature', txSignature)
     .single();
 
   if (error) throw error;
+  return data;
+}
+
+export async function getBatchByPDA(batchPDA: string) {
+  const { data, error } = await supabase
+    .from('batches')
+    .select('*')
+    .eq('batch_pda', batchPDA)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows found
+      return null;
+    }
+    throw error;
+  }
   return data;
 }
 

@@ -13,12 +13,26 @@ export const PHARMATRACE_KEYPAIR = Keypair.fromSecretKey(
 
 export const PHARMATRACE_PUBLIC_KEY = PHARMATRACE_KEYPAIR.publicKey;
 
+// Program ID for the PharmaTrace Anchor program
+export const PHARMACY_PROGRAM_ID = new PublicKey(SOLANA_CONFIG.PROGRAM_ID);
+
 // Create connection to Solana with retry logic
 export const connection = new Connection(RPC_ENDPOINT, {
   commitment: 'confirmed',
   wsEndpoint: SOLANA_CONFIG.WS_ENDPOINT,
   confirmTransactionInitialTimeout: 60000,
 });
+
+// Helper to find batch PDA
+export async function findBatchPDA(batchId: string): Promise<[PublicKey, number]> {
+  return await PublicKey.findProgramAddress(
+    [
+      Buffer.from('batch'),
+      Buffer.from(batchId),
+    ],
+    PHARMACY_PROGRAM_ID
+  );
+}
 
 // Helper to check if a string is a valid Solana public key
 export function isValidPublicKey(address: string): boolean {
