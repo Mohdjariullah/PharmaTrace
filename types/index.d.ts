@@ -6,7 +6,7 @@ export interface Batch {
   current_owner_wallet: string;
   mfg_date: string; // ISO date string
   exp_date: string; // ISO date string
-  status: 0 | 1 | 2; // 0=Valid, 1=Flagged, 2=Expired
+  status: number; // Changed from 0 | 1 | 2 to number to match Supabase schema
   ipfs_hash?: string | null;
   batch_pda: string; // Program Derived Address for the batch
   init_tx_signature: string; // Initial transaction signature
