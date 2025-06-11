@@ -321,7 +321,7 @@ export default function VerifyPage() {
                       <div>
                         <CardTitle className="flex items-center gap-2">
                           {batch?.product_name || qrCode?.medicine_name || 'Unknown Product'}
-                          <Zap className="h-5 w-5 text-blue-500" title="Blockchain Verified" />
+                          <Zap className="h-5 w-5 text-blue-500" />
                         </CardTitle>
                         <CardDescription>
                           {batch ? (
