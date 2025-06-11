@@ -70,11 +70,15 @@ export async function updateBatchOwner(batchId: string, newOwnerWallet: string) 
       updated_at: new Date().toISOString()
     })
     .eq('batch_id', batchId)
-    .select()
-    .single();
+    .select();
 
   if (error) throw error;
-  return data;
+  
+  if (!data || data.length === 0) {
+    throw new Error(`Batch with ID "${batchId}" not found. Please verify the batch ID and try again.`);
+  }
+  
+  return data[0];
 }
 
 export async function updateBatchStatus(batchId: string, status: 0 | 1 | 2) {
@@ -85,11 +89,15 @@ export async function updateBatchStatus(batchId: string, status: 0 | 1 | 2) {
       updated_at: new Date().toISOString()
     })
     .eq('batch_id', batchId)
-    .select()
-    .single();
+    .select();
 
   if (error) throw error;
-  return data;
+  
+  if (!data || data.length === 0) {
+    throw new Error(`Batch with ID "${batchId}" not found. Please verify the batch ID and try again.`);
+  }
+  
+  return data[0];
 }
 
 // QR Code methods
