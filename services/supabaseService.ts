@@ -63,6 +63,12 @@ export async function getBatchById(batchId: string) {
 }
 
 export async function updateBatchOwner(batchId: string, newOwnerWallet: string) {
+  // First check if the batch exists
+  const existingBatch = await getBatchById(batchId);
+  if (!existingBatch) {
+    throw new Error(`Batch with ID "${batchId}" not found. Please verify the batch ID and try again.`);
+  }
+
   const { data, error } = await supabase
     .from('batches')
     .update({ 
@@ -75,13 +81,19 @@ export async function updateBatchOwner(batchId: string, newOwnerWallet: string) 
   if (error) throw error;
   
   if (!data || data.length === 0) {
-    throw new Error(`Batch with ID "${batchId}" not found. Please verify the batch ID and try again.`);
+    throw new Error(`Failed to update batch with ID "${batchId}". Please try again.`);
   }
   
   return data[0];
 }
 
 export async function updateBatchStatus(batchId: string, status: 0 | 1 | 2) {
+  // First check if the batch exists
+  const existingBatch = await getBatchById(batchId);
+  if (!existingBatch) {
+    throw new Error(`Batch with ID "${batchId}" not found. Please verify the batch ID and try again.`);
+  }
+
   const { data, error } = await supabase
     .from('batches')
     .update({ 
@@ -94,7 +106,7 @@ export async function updateBatchStatus(batchId: string, status: 0 | 1 | 2) {
   if (error) throw error;
   
   if (!data || data.length === 0) {
-    throw new Error(`Batch with ID "${batchId}" not found. Please verify the batch ID and try again.`);
+    throw new Error(`Failed to update batch status for ID "${batchId}". Please try again.`);
   }
   
   return data[0];
