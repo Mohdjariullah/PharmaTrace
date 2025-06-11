@@ -53,7 +53,7 @@ export default function QrGenerator({ txSignature, batchId, medicineName, ownerA
   };
 
   const handleShare = async () => {
-    if (!dataURL || !navigator.share) return;
+    if (!dataURL || typeof navigator.share !== 'function') return;
     
     try {
       const blob = await fetch(dataURL).then(res => res.blob());
@@ -125,7 +125,7 @@ export default function QrGenerator({ txSignature, batchId, medicineName, ownerA
                 <Download className="h-4 w-4" />
                 Download
               </Button>
-              {navigator.share && (
+              {typeof navigator.share === 'function' && (
                 <Button 
                   variant="outline" 
                   size="sm" 

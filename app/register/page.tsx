@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import dynamic from "next/dynamic";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,9 +31,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import QrGenerator from "@/components/QrGenerator";
 import { registerBatchTransaction } from "@/services/blockchainService";
 import { insertBatchMetadata, insertQrCode, getBatchById } from "@/services/supabaseService";
+
+const QrGenerator = dynamic(() => import("@/components/QrGenerator"), {
+  ssr: false,
+  loading: () => <div className="w-[280px] h-[280px] bg-gray-100 animate-pulse rounded-lg"></div>
+});
 
 const registerFormSchema = z.object({
   batchId: z.string().min(3, {

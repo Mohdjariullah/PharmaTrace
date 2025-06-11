@@ -2,12 +2,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { PageHeader } from "@/components/ui/page-header";
 import { QrCodePayload } from "@/types";
-import QrScanner from "@/components/QrScanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, ScanLine, CheckCircle2, Zap, Shield, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const QrScanner = dynamic(() => import("@/components/QrScanner"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-96 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+        <p className="text-sm text-muted-foreground">Loading camera...</p>
+      </div>
+    </div>
+  )
+});
 
 export default function ScanPage() {
   const router = useRouter();
