@@ -2,6 +2,34 @@ import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
 import { SUPABASE_CONFIG } from './config';
 
+// Helper function to determine if an error should be retried
+function shouldRetryError(error: any, response?: Response): boolean {
+  // Don't retry on client errors (4xx) except for specific cases
+  if (response?.status) {
+    const status = response.status;
+    
+    // Retry on server errors (5xx)
+    if (status >= 500) return true;
+    
+    // Retry on rate limiting
+    if (status === 429) return true;
+    
+    // Retry on request timeout
+    if (status === 408) return true;
+    
+    // Don't retry on other 4xx errors (client errors)
+    if (status >= 400 && status < 500) return false;
+  }
+  
+  // Retry on network errors
+  if (error.name === 'TypeError' && error.message.includes('fetch')) return true;
+  if (error.name === 'AbortError') return true;
+  if (error.message?.includes('network')) return true;
+  if (error.message?.includes('timeout')) return true;
+  
+  return false;
+}
+
 // Create Supabase client with centralized configuration
 export const supabase = createClient<Database>(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY, {
   auth: {
@@ -19,30 +47,70 @@ export const supabase = createClient<Database>(SUPABASE_CONFIG.URL, SUPABASE_CON
     fetch: async (url, options = {}) => {
       const maxRetries = 3;
       let attempt = 0;
+      let lastError: any;
       
       while (attempt < maxRetries) {
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+          
           const response = await fetch(url, {
             ...options,
-            signal: AbortSignal.timeout(10000)
+            signal: controller.signal
           });
           
+          clearTimeout(timeoutId);
+          
+          // If response is not ok, check if we should retry
           if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const error = new Error(`HTTP error! status: ${response.status}`);
+            
+            // For client errors, don't retry and throw immediately with better error message
+            if (!shouldRetryError(error, response)) {
+              let errorMessage = `Request failed with status ${response.status}`;
+              
+              try {
+                const errorBody = await response.text();
+                if (errorBody) {
+                  const parsedError = JSON.parse(errorBody);
+                  if (parsedError.message) {
+                    errorMessage = parsedError.message;
+                  } else if (parsedError.code) {
+                    errorMessage = `${parsedError.code}: ${parsedError.details || 'Request failed'}`;
+                  }
+                }
+              } catch (parseError) {
+                // If we can't parse the error body, use the default message
+              }
+              
+              throw new Error(errorMessage);
+            }
+            
+            throw error;
           }
           
           return response;
-        } catch (error) {
+        } catch (error: any) {
+          lastError = error;
           attempt++;
+          
+          // Don't retry if this is not a retryable error
+          if (!shouldRetryError(error)) {
+            console.error('Supabase request failed (non-retryable):', error);
+            throw error;
+          }
+          
           if (attempt === maxRetries) {
             console.error('Supabase request failed after retries:', error);
             throw new Error('Failed to connect to Supabase. Please check your connection and try again.');
           }
+          
+          // Exponential backoff
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
         }
       }
       
-      throw new Error('Failed to connect to Supabase after retries');
+      throw lastError;
     }
   }
 });

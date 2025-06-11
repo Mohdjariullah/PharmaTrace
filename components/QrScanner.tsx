@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { parseQrPayload } from '@/services/qrService';
 import { QrCodePayload } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 import jsQR from 'jsqr';
 
 interface QrScannerProps {
@@ -23,10 +24,12 @@ export default function QrScanner({ onScan }: QrScannerProps) {
   const [isCameraAvailable, setIsCameraAvailable] = useState(true);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [triedBothFacingModes, setTriedBothFacingModes] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const { toast } = useToast();
 
   const startCamera = useCallback(async () => {
     try {
@@ -73,22 +76,21 @@ export default function QrScanner({ onScan }: QrScannerProps) {
           return;
         } catch (retryError: any) {
           console.error('Error accessing alternate camera:', retryError);
-          setCameraError('No cameras found on this device');
+          setCameraError('No cameras found on this device. Please try uploading an image instead.');
         }
       } else {
         if (error.name === 'NotAllowedError') {
           setCameraError('Camera access denied. Please allow camera permissions and try again.');
         } else if (error.name === 'NotFoundError') {
-          setCameraError('No cameras found on this device');
+          setCameraError('No cameras found on this device. Please try uploading an image instead.');
         } else if (error.name === 'NotReadableError') {
           setCameraError('Camera is already in use by another application');
         } else {
-          setCameraError(error.message || 'Could not access camera');
+          setCameraError(error.message || 'Could not access camera. Please try uploading an image instead.');
         }
       }
       
       setIsCameraAvailable(false);
-      setActiveTab('upload');
       setScanning(false);
     }
   }, [facingMode, triedBothFacingModes]);
@@ -162,7 +164,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
   useEffect(() => {
     if (activeTab === 'camera' && isCameraAvailable) {
       startCamera().catch(() => {
-        setActiveTab('upload');
+        // Don't automatically switch tabs, let user decide
       });
     } else {
       stopCamera();
@@ -173,57 +175,139 @@ export default function QrScanner({ onScan }: QrScannerProps) {
     };
   }, [activeTab, isCameraAvailable, startCamera, stopCamera]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    const reader = new FileReader();
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select a valid image file (JPG, PNG, WEBP, GIF).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessingFile(true);
     
-    reader.onload = (e) => {
-      const img = document.createElement('img');
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        
-        if (!context) return;
-        
-        canvas.width = img.width;
-        canvas.height = img.height;
-        context.drawImage(img, 0, 0);
-        
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert',
-        });
-        
-        if (code) {
-          const payload = parseQrPayload(code.data);
-          if (payload) {
-            onScan(payload);
-          } else {
-            alert('Invalid QR code format');
-          }
-        } else {
-          alert('No QR code found in image');
-        }
-      };
+    try {
+      const reader = new FileReader();
       
-      img.src = e.target?.result as string;
-    };
-    
-    reader.readAsDataURL(file);
+      const processImage = new Promise<void>((resolve, reject) => {
+        reader.onload = (e) => {
+          const img = document.createElement('img');
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              const context = canvas.getContext('2d');
+              
+              if (!context) {
+                reject(new Error('Could not create canvas context'));
+                return;
+              }
+              
+              canvas.width = img.width;
+              canvas.height = img.height;
+              context.drawImage(img, 0, 0);
+              
+              const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+              const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: 'dontInvert',
+              });
+              
+              if (code) {
+                const payload = parseQrPayload(code.data);
+                if (payload) {
+                  onScan(payload);
+                  toast({
+                    title: "QR Code Found",
+                    description: "Successfully decoded QR code from image.",
+                  });
+                  resolve();
+                } else {
+                  reject(new Error('Invalid QR code format. Please ensure the QR code contains valid PharmaTrace data.'));
+                }
+              } else {
+                reject(new Error('No QR code found in the image. Please ensure the image contains a clear QR code.'));
+              }
+            } catch (error) {
+              reject(error);
+            }
+          };
+          
+          img.onerror = () => {
+            reject(new Error('Failed to load image. Please try a different image file.'));
+          };
+          
+          img.src = e.target?.result as string;
+        };
+        
+        reader.onerror = () => {
+          reject(new Error('Failed to read file. Please try again.'));
+        };
+      });
+      
+      reader.readAsDataURL(file);
+      await processImage;
+      
+    } catch (error: any) {
+      console.error('Error processing image:', error);
+      toast({
+        title: "Image Processing Failed",
+        description: error.message || "Failed to process the image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingFile(false);
+      // Clear the input so the same file can be selected again
+      event.target.value = '';
+    }
   };
 
   const handleManualSubmit = () => {
+    if (!manualInput.trim()) {
+      toast({
+        title: "Empty Input",
+        description: "Please enter QR code data before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const payload = parseQrPayload(manualInput);
       if (payload) {
         onScan(payload);
+        toast({
+          title: "QR Data Parsed",
+          description: "Successfully parsed QR code data.",
+        });
+        setManualInput('');
       } else {
-        alert('Invalid JSON format. Please check your input.');
+        toast({
+          title: "Invalid Format",
+          description: "Invalid QR code format. Please check your input and ensure it contains valid PharmaTrace data.",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      alert('Failed to parse JSON. Please check your input.');
+    } catch (error: any) {
+      console.error('Error parsing manual input:', error);
+      toast({
+        title: "Parse Error",
+        description: "Failed to parse QR code data. Please check the JSON format and try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -265,18 +349,29 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                   </div>
                   <div className="text-red-600 dark:text-red-400 font-medium mb-2">Camera Error</div>
                   <div className="text-sm text-red-500 dark:text-red-300 text-center mb-4">{cameraError}</div>
-                  <Button 
-                    size="sm" 
-                    onClick={() => {
-                      setIsCameraAvailable(true);
-                      setTriedBothFacingModes(false);
-                      startCamera();
-                    }} 
-                    className="flex items-center gap-2"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Try Again
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        setIsCameraAvailable(true);
+                        setTriedBothFacingModes(false);
+                        startCamera();
+                      }} 
+                      className="flex items-center gap-2"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Try Again
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setActiveTab('upload')} 
+                      className="flex items-center gap-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Upload Image
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -353,20 +448,35 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                   Select an image file containing a QR code to decode
                 </p>
                 <label>
-                  <Button variant="default" className="cursor-pointer" size="lg">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Choose Image File
+                  <Button 
+                    variant="default" 
+                    className="cursor-pointer" 
+                    size="lg"
+                    disabled={isProcessingFile}
+                  >
+                    {isProcessingFile ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Choose Image File
+                      </>
+                    )}
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
                       onChange={handleFileUpload}
+                      disabled={isProcessingFile}
                     />
                   </Button>
                 </label>
               </div>
               <p className="text-xs text-muted-foreground">
-                Supported formats: JPG, PNG, WEBP, GIF
+                Supported formats: JPG, PNG, WEBP, GIF (max 10MB)
               </p>
             </div>
           </TabsContent>

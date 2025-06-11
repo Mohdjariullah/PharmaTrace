@@ -52,7 +52,14 @@ export function truncatePublicKey(publicKey: string): string {
 
 // Helper to get explorer URL for transaction or address
 export function getExplorerUrl(signature: string, type: 'tx' | 'address' = 'tx'): string {
-  return `${APP_CONFIG.EXPLORER_BASE_URL}/${type}/${signature}`;
+  const baseUrl = `${APP_CONFIG.EXPLORER_BASE_URL}/${type}/${signature}`;
+  
+  // Add cluster parameter at the end for non-mainnet networks
+  if (SOLANA_CONFIG.NETWORK !== 'mainnet-beta') {
+    return `${baseUrl}?cluster=${SOLANA_CONFIG.NETWORK}`;
+  }
+  
+  return baseUrl;
 }
 
 // Helper to validate connection

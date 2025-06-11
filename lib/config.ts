@@ -29,9 +29,7 @@ export const APP_CONFIG = {
   NAME: 'PharmaTrace',
   DESCRIPTION: 'Blockchain-secured pharmaceutical supply chain tracking',
   VERSION: '1.0.0',
-  EXPLORER_BASE_URL: SOLANA_CONFIG.NETWORK === 'mainnet-beta' 
-    ? 'https://explorer.solana.com' 
-    : `https://explorer.solana.com/?cluster=${SOLANA_CONFIG.NETWORK}`,
+  EXPLORER_BASE_URL: 'https://explorer.solana.com',
 };
 
 // Development helpers
