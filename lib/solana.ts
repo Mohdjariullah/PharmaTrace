@@ -1,10 +1,17 @@
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import { SOLANA_CONFIG, APP_CONFIG } from './config';
+import bs58 from 'bs58';
 
 // Use centralized configuration
 export const NETWORK = SOLANA_CONFIG.NETWORK;
 export const RPC_ENDPOINT = SOLANA_CONFIG.RPC_ENDPOINT;
-export const PHARMACY_PROGRAM_ID = new PublicKey(SOLANA_CONFIG.PROGRAM_ID);
+
+// Create PharmaTrace verification keypair from private key
+export const PHARMATRACE_KEYPAIR = Keypair.fromSecretKey(
+  bs58.decode(SOLANA_CONFIG.PHARMATRACE_PRIVATE_KEY)
+);
+
+export const PHARMATRACE_PUBLIC_KEY = PHARMATRACE_KEYPAIR.publicKey;
 
 // Create connection to Solana with retry logic
 export const connection = new Connection(RPC_ENDPOINT, {
@@ -12,14 +19,6 @@ export const connection = new Connection(RPC_ENDPOINT, {
   wsEndpoint: SOLANA_CONFIG.WS_ENDPOINT,
   confirmTransactionInitialTimeout: 60000,
 });
-
-// Helper to find PDA for batch accounts
-export async function findBatchPDA(batchId: string): Promise<[PublicKey, number]> {
-  return await PublicKey.findProgramAddress(
-    [Buffer.from('batch'), Buffer.from(batchId)],
-    PHARMACY_PROGRAM_ID
-  );
-}
 
 // Helper to check if a string is a valid Solana public key
 export function isValidPublicKey(address: string): boolean {
@@ -54,21 +53,13 @@ export async function validateConnection(): Promise<boolean> {
   }
 }
 
-// Helper to get program info
-export async function getProgramInfo(): Promise<any> {
+// Helper to get account info
+export async function getAccountInfo(publicKey: PublicKey): Promise<any> {
   try {
-    const accountInfo = await connection.getAccountInfo(PHARMACY_PROGRAM_ID);
-    if (!accountInfo) {
-      throw new Error('Program not found on blockchain');
-    }
-    return {
-      programId: PHARMACY_PROGRAM_ID.toString(),
-      executable: accountInfo.executable,
-      owner: accountInfo.owner.toString(),
-      lamports: accountInfo.lamports,
-    };
+    const accountInfo = await connection.getAccountInfo(publicKey);
+    return accountInfo;
   } catch (error) {
-    console.error('Error getting program info:', error);
+    console.error('Error getting account info:', error);
     throw error;
   }
 }

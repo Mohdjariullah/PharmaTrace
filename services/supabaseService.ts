@@ -17,11 +17,11 @@ export async function insertBatchMetadata(batch: Omit<Batch, 'id' | 'created_at'
   return data;
 }
 
-export async function getBatchByPDA(batchPDA: string) {
+export async function getBatchByTxSignature(txSignature: string) {
   const { data, error } = await supabase
     .from('batches')
     .select('*')
-    .eq('batch_pda', batchPDA)
+    .eq('tx_signature', txSignature)
     .single();
 
   if (error) throw error;

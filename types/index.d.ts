@@ -8,8 +8,7 @@ export interface Batch {
   exp_date: string; // ISO date string
   status: 0 | 1 | 2; // 0=Valid, 1=Flagged, 2=Expired
   ipfs_hash?: string | null;
-  batch_pda: string;
-  init_tx_signature: string;
+  tx_signature: string; // Changed from batch_pda to tx_signature
   created_at?: string;
   updated_at?: string;
 }
@@ -33,7 +32,9 @@ export interface BatchFlag {
 }
 
 export interface QrCodePayload {
-  batchPDA: string;
+  txSignature: string;
+  batchId: string;
+  medicineName: string;
   timestamp: string;
 }
 

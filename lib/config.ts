@@ -13,15 +13,8 @@ export const SOLANA_CONFIG = {
   NETWORK: validateEnvVar('NEXT_PUBLIC_SOLANA_NETWORK', process.env.NEXT_PUBLIC_SOLANA_NETWORK, 'devnet'),
   RPC_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_RPC', process.env.NEXT_PUBLIC_SOLANA_RPC, clusterApiUrl('devnet')),
   WS_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_WS_ENDPOINT', process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT, 'wss://api.devnet.solana.com'),
-  PROGRAM_ID: validateEnvVar('NEXT_PUBLIC_PROGRAM_ID', process.env.NEXT_PUBLIC_PROGRAM_ID, '7QUnqWD9rAAy5PNCpvXqZxYXfPW7G9SrWKJ3osTWy2EL'),
+  PHARMATRACE_PRIVATE_KEY: validateEnvVar('PHARMATRACE_PRIVATE_KEY', process.env.PHARMATRACE_PRIVATE_KEY),
 };
-
-// Validate Program ID format
-try {
-  new PublicKey(SOLANA_CONFIG.PROGRAM_ID);
-} catch (error) {
-  throw new Error(`Invalid NEXT_PUBLIC_PROGRAM_ID format: ${SOLANA_CONFIG.PROGRAM_ID}`);
-}
 
 // Supabase Configuration
 export const SUPABASE_CONFIG = {
@@ -48,7 +41,6 @@ export const isProduction = process.env.NODE_ENV === 'production';
 if (isDevelopment) {
   console.log('🔧 PharmaTrace Configuration:', {
     network: SOLANA_CONFIG.NETWORK,
-    programId: SOLANA_CONFIG.PROGRAM_ID,
     rpcEndpoint: SOLANA_CONFIG.RPC_ENDPOINT,
   });
 }

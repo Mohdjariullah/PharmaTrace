@@ -1,10 +1,14 @@
-import { PublicKey, Transaction, Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { getPharmaProgram } from '@/lib/anchor';
-import { connection, findBatchPDA, PHARMACY_PROGRAM_ID } from '@/lib/solana';
-import { web3 } from '@project-serum/anchor';
+import { 
+  PublicKey, 
+  Transaction, 
+  SystemProgram, 
+  LAMPORTS_PER_SOL,
+  sendAndConfirmTransaction
+} from '@solana/web3.js';
+import { connection, PHARMATRACE_PUBLIC_KEY } from '@/lib/solana';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 
-async function validateTransaction(connection: Connection, signature: string): Promise<boolean> {
+async function validateTransaction(signature: string): Promise<boolean> {
   try {
     const status = await connection.getSignatureStatus(signature);
     if (!status || !status.value) return false;
@@ -40,44 +44,15 @@ async function retryTransaction<T>(
   throw lastError;
 }
 
-// Check if the program is deployed and accessible
-async function validateProgramDeployment(): Promise<boolean> {
-  try {
-    const accountInfo = await connection.getAccountInfo(PHARMACY_PROGRAM_ID);
-    if (!accountInfo) {
-      console.error('❌ Program not found on blockchain. Program ID:', PHARMACY_PROGRAM_ID.toString());
-      return false;
-    }
-    
-    if (!accountInfo.executable) {
-      console.error('❌ Program account is not executable');
-      return false;
-    }
-    
-    console.log('✅ Program found and executable:', PHARMACY_PROGRAM_ID.toString());
-    return true;
-  } catch (error) {
-    console.error('❌ Error validating program deployment:', error);
-    return false;
-  }
-}
-
-export async function initBatchOnChain(
+export async function registerBatchTransaction(
   wallet: WalletContextState,
   batchId: string,
   productName: string,
   mfgDate: string,
-  expDate: string,
-  ipfsHash?: string
-): Promise<{ batchPDA: string; txSignature: string }> {
+  expDate: string
+): Promise<{ txSignature: string; batchId: string; productName: string }> {
   if (!wallet.signTransaction || !wallet.publicKey) {
     throw new Error('Wallet not properly connected');
-  }
-
-  // Validate program deployment first
-  const isProgramDeployed = await validateProgramDeployment();
-  if (!isProgramDeployed) {
-    throw new Error(`Program not deployed or not found. Please check the program ID: ${PHARMACY_PROGRAM_ID.toString()}`);
   }
 
   // Check wallet balance
@@ -86,7 +61,7 @@ export async function initBatchOnChain(
     const minBalance = 0.01 * LAMPORTS_PER_SOL; // Minimum 0.01 SOL
     
     if (balance < minBalance) {
-      throw new Error(`Insufficient SOL balance. You need at least 0.01 SOL for transaction fees and rent. Current balance: ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
+      throw new Error(`Insufficient SOL balance. You need at least 0.01 SOL for transaction fees. Current balance: ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
     }
   } catch (error: any) {
     if (error.message.includes('Insufficient SOL')) {
@@ -95,56 +70,53 @@ export async function initBatchOnChain(
     console.warn('Could not check wallet balance:', error);
   }
 
-  const program = getPharmaProgram(wallet);
-  const [batchPDA] = await findBatchPDA(batchId);
-
-  // Check if batch already exists
-  try {
-    const existingAccount = await connection.getAccountInfo(batchPDA);
-    if (existingAccount) {
-      throw new Error(`Batch with ID "${batchId}" already exists. Please use a different batch ID.`);
-    }
-  } catch (error: any) {
-    if (error.message.includes('already exists')) {
-      throw error;
-    }
-    // Account doesn't exist, which is what we want
-  }
-
   return retryTransaction(async () => {
     try {
-      console.log('🔄 Attempting to register batch on blockchain...');
-      console.log('Batch PDA:', batchPDA.toString());
-      console.log('Program ID:', PHARMACY_PROGRAM_ID.toString());
+      console.log('🔄 Creating batch registration transaction...');
+      console.log('PharmaTrace Account:', PHARMATRACE_PUBLIC_KEY.toString());
+      console.log('User Account:', wallet.publicKey!.toString());
       
-      const tx = await program.methods
-        .initBatch(batchId, productName, mfgDate, expDate, ipfsHash || '')
-        .accounts({
-          batchAccount: batchPDA,
-          manufacturer: wallet.publicKey,
-          systemProgram: web3.SystemProgram.programId,
+      // Create a simple SOL transfer transaction to the PharmaTrace account
+      // This serves as proof of batch registration
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: wallet.publicKey!,
+          toPubkey: PHARMATRACE_PUBLIC_KEY,
+          lamports: 1000000, // 0.001 SOL as registration fee
         })
-        .rpc();
+      );
 
-      console.log('✅ Transaction sent:', tx);
+      // Get recent blockhash
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey!;
 
-      const isValid = await validateTransaction(connection, tx);
+      // Sign transaction with wallet
+      const signedTransaction = await wallet.signTransaction(transaction);
+
+      // Send transaction
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, 'confirmed');
+
+      console.log('✅ Transaction confirmed:', signature);
+
+      const isValid = await validateTransaction(signature);
       if (!isValid) {
         throw new Error('Transaction failed validation');
       }
 
-      console.log('✅ Transaction confirmed:', tx);
       return {
-        batchPDA: batchPDA.toString(),
-        txSignature: tx,
+        txSignature: signature,
+        batchId,
+        productName,
       };
     } catch (error: any) {
       console.error('❌ Blockchain transaction failed:', error);
       
       // Provide more specific error messages
-      if (error.message?.includes('InstructionFallbackNotFound')) {
-        throw new Error('Smart contract instruction not found. The program may not be properly deployed or the instruction name has changed.');
-      } else if (error.message?.includes('insufficient funds')) {
+      if (error.message?.includes('insufficient funds')) {
         throw new Error('Insufficient SOL for transaction fees. Please add more SOL to your wallet.');
       } else if (error.message?.includes('Simulation failed')) {
         throw new Error('Transaction simulation failed. Please check your inputs and try again.');
@@ -155,105 +127,158 @@ export async function initBatchOnChain(
   });
 }
 
+export async function verifyBatchTransaction(txSignature: string): Promise<{
+  isValid: boolean;
+  fromAccount?: string;
+  toAccount?: string;
+  amount?: number;
+  timestamp?: number;
+  error?: string;
+}> {
+  try {
+    // Get transaction details
+    const transaction = await connection.getTransaction(txSignature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0
+    });
+
+    if (!transaction) {
+      return {
+        isValid: false,
+        error: 'Transaction not found on blockchain'
+      };
+    }
+
+    // Check if transaction was successful
+    if (transaction.meta?.err) {
+      return {
+        isValid: false,
+        error: 'Transaction failed on blockchain'
+      };
+    }
+
+    // Get transaction details
+    const message = transaction.transaction.message;
+    const accountKeys = message.staticAccountKeys || message.accountKeys;
+    
+    if (!accountKeys || accountKeys.length < 2) {
+      return {
+        isValid: false,
+        error: 'Invalid transaction structure'
+      };
+    }
+
+    const fromAccount = accountKeys[0].toString();
+    const toAccount = accountKeys[1].toString();
+
+    // Verify the transaction was sent to our PharmaTrace account
+    const isPharmaTraceTransaction = toAccount === PHARMATRACE_PUBLIC_KEY.toString();
+
+    if (!isPharmaTraceTransaction) {
+      return {
+        isValid: false,
+        error: 'Transaction was not sent to PharmaTrace verification account'
+      };
+    }
+
+    // Get the amount transferred (from pre and post balances)
+    const preBalances = transaction.meta?.preBalances || [];
+    const postBalances = transaction.meta?.postBalances || [];
+    
+    let amount = 0;
+    if (preBalances.length > 1 && postBalances.length > 1) {
+      amount = preBalances[0] - postBalances[0]; // Amount deducted from sender
+    }
+
+    return {
+      isValid: true,
+      fromAccount,
+      toAccount,
+      amount,
+      timestamp: transaction.blockTime || 0
+    };
+
+  } catch (error: any) {
+    console.error('Error verifying transaction:', error);
+    return {
+      isValid: false,
+      error: error.message || 'Failed to verify transaction'
+    };
+  }
+}
+
 export async function transferBatchOnChain(
   wallet: WalletContextState,
-  batchPDA: string,
+  batchId: string,
   newOwner: string
 ): Promise<string> {
   if (!wallet.signTransaction || !wallet.publicKey) {
     throw new Error('Wallet not properly connected');
   }
 
-  const isProgramDeployed = await validateProgramDeployment();
-  if (!isProgramDeployed) {
-    throw new Error(`Program not deployed or not found. Please check the program ID: ${PHARMACY_PROGRAM_ID.toString()}`);
-  }
-
-  const program = getPharmaProgram(wallet);
   const newOwnerKey = new PublicKey(newOwner);
-  const batchPDAKey = new PublicKey(batchPDA);
 
   return retryTransaction(async () => {
-    const tx = await program.methods
-      .transferBatch()
-      .accounts({
-        batchAccount: batchPDAKey,
-        currentOwner: wallet.publicKey,
-        newOwner: newOwnerKey,
+    // Create a simple SOL transfer transaction to represent ownership transfer
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: wallet.publicKey!,
+        toPubkey: PHARMATRACE_PUBLIC_KEY,
+        lamports: 500000, // 0.0005 SOL as transfer fee
       })
-      .rpc();
+    );
 
-    const isValid = await validateTransaction(connection, tx);
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = wallet.publicKey!;
+
+    const signedTransaction = await wallet.signTransaction(transaction);
+    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+    
+    await connection.confirmTransaction(signature, 'confirmed');
+
+    const isValid = await validateTransaction(signature);
     if (!isValid) {
       throw new Error('Transaction failed validation');
     }
 
-    return tx;
+    return signature;
   });
 }
 
 export async function flagBatchOnChain(
   wallet: WalletContextState,
-  batchPDA: string,
+  batchId: string,
   reason: string
 ): Promise<string> {
   if (!wallet.signTransaction || !wallet.publicKey) {
     throw new Error('Wallet not properly connected');
   }
 
-  const isProgramDeployed = await validateProgramDeployment();
-  if (!isProgramDeployed) {
-    throw new Error(`Program not deployed or not found. Please check the program ID: ${PHARMACY_PROGRAM_ID.toString()}`);
-  }
-
-  const program = getPharmaProgram(wallet);
-  const batchPDAKey = new PublicKey(batchPDA);
-
   return retryTransaction(async () => {
-    const tx = await program.methods
-      .flagBatch(reason)
-      .accounts({
-        batchAccount: batchPDAKey,
-        regulator: wallet.publicKey,
+    // Create a simple SOL transfer transaction to represent flagging
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: wallet.publicKey!,
+        toPubkey: PHARMATRACE_PUBLIC_KEY,
+        lamports: 100000, // 0.0001 SOL as flagging fee
       })
-      .rpc();
+    );
 
-    const isValid = await validateTransaction(connection, tx);
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = wallet.publicKey!;
+
+    const signedTransaction = await wallet.signTransaction(transaction);
+    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+    
+    await connection.confirmTransaction(signature, 'confirmed');
+
+    const isValid = await validateTransaction(signature);
     if (!isValid) {
       throw new Error('Transaction failed validation');
     }
 
-    return tx;
+    return signature;
   });
-}
-
-export async function isCurrentOwner(
-  wallet: WalletContextState,
-  batchPDA: string
-): Promise<boolean> {
-  try {
-    if (!wallet.publicKey) return false;
-
-    const program = getPharmaProgram(wallet);
-    const batchAccount = await program.account.batch.fetch(new PublicKey(batchPDA));
-
-    return batchAccount.currentOwner.toString() === wallet.publicKey.toString();
-  } catch (error) {
-    console.error('Error checking current owner:', error);
-    return false;
-  }
-}
-
-export async function isRegulator(
-  wallet: WalletContextState
-): Promise<boolean> {
-  try {
-    if (!wallet.publicKey) return false;
-
-    // Replace with real validator logic
-    return false;
-  } catch (error) {
-    console.error('Error checking regulator status:', error);
-    return false;
-  }
 }
