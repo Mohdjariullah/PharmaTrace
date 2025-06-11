@@ -32,10 +32,21 @@ export interface BatchFlag {
   flagged_at: string;
 }
 
+export interface QrCode {
+  id?: string;
+  tx_signature: string;
+  batch_id: string;
+  medicine_name: string;
+  owner_address: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface QrCodePayload {
-  batchPDA: string;
+  txSignature: string;
   batchId: string;
   medicineName: string;
+  ownerAddress: string;
   timestamp: string;
 }
 

@@ -8,13 +8,14 @@ import { generateQrPayload, generateQrDataURL } from '@/services/qrService';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface QrGeneratorProps {
-  batchPDA: string;
-  batchId?: string;
-  medicineName?: string;
+  txSignature: string;
+  batchId: string;
+  medicineName: string;
+  ownerAddress: string;
   size?: number;
 }
 
-export default function QrGenerator({ batchPDA, batchId = '', medicineName = '', size = 250 }: QrGeneratorProps) {
+export default function QrGenerator({ txSignature, batchId, medicineName, ownerAddress, size = 250 }: QrGeneratorProps) {
   const [dataURL, setDataURL] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +24,7 @@ export default function QrGenerator({ batchPDA, batchId = '', medicineName = '',
     const generateQR = async () => {
       try {
         setIsLoading(true);
-        const payload = generateQrPayload(batchPDA, batchId, medicineName);
+        const payload = generateQrPayload(txSignature, batchId, medicineName, ownerAddress);
         const url = await generateQrDataURL(payload);
         setDataURL(url);
         setError(null);
@@ -35,17 +36,17 @@ export default function QrGenerator({ batchPDA, batchId = '', medicineName = '',
       }
     };
 
-    if (batchPDA) {
+    if (txSignature && batchId && medicineName && ownerAddress) {
       generateQR();
     }
-  }, [batchPDA, batchId, medicineName]);
+  }, [txSignature, batchId, medicineName, ownerAddress]);
 
   const handleDownload = () => {
     if (!dataURL) return;
     
     const link = document.createElement('a');
     link.href = dataURL;
-    link.download = `pharmatrace_${batchId}_${batchPDA.substring(0, 8)}.png`;
+    link.download = `pharmatrace_${batchId}_${txSignature.substring(0, 8)}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -101,10 +102,13 @@ export default function QrGenerator({ batchPDA, batchId = '', medicineName = '',
             
             <div className="text-center mb-4 space-y-2">
               <div className="text-sm font-medium text-foreground">
-                {medicineName || 'Pharmaceutical Batch'}
+                {medicineName}
               </div>
               <div className="text-xs text-muted-foreground font-mono">
-                Batch: {batchId || 'N/A'}
+                Batch: {batchId}
+              </div>
+              <div className="text-xs text-muted-foreground font-mono">
+                TX: {txSignature.substring(0, 8)}...{txSignature.substring(-8)}
               </div>
               <div className="text-xs text-muted-foreground">
                 Scan to verify authenticity on blockchain

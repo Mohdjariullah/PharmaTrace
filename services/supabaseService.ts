@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
-import { Batch, BatchTransfer, BatchFlag } from '@/types';
+import { Batch, BatchTransfer, BatchFlag, QrCode } from '@/types';
 
 // Batch methods
 export async function insertBatchMetadata(batch: Omit<Batch, 'id' | 'created_at' | 'updated_at'>) {
@@ -24,7 +24,13 @@ export async function getBatchByTxSignature(txSignature: string) {
     .eq('init_tx_signature', txSignature)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows found
+      return null;
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -81,6 +87,50 @@ export async function updateBatchStatus(batchId: string, status: 0 | 1 | 2) {
     .eq('batch_id', batchId)
     .select()
     .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// QR Code methods
+export async function insertQrCode(qrCode: Omit<QrCode, 'id' | 'created_at' | 'updated_at'>) {
+  const { data, error } = await supabase
+    .from('qr_codes')
+    .insert({
+      ...qrCode,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getQrCodeByTxSignature(txSignature: string) {
+  const { data, error } = await supabase
+    .from('qr_codes')
+    .select('*')
+    .eq('tx_signature', txSignature)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows found
+      return null;
+    }
+    throw error;
+  }
+  return data;
+}
+
+export async function getQrCodesByBatch(batchId: string) {
+  const { data, error } = await supabase
+    .from('qr_codes')
+    .select('*')
+    .eq('batch_id', batchId)
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
   return data;

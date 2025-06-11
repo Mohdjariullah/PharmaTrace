@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/popover";
 import QrGenerator from "@/components/QrGenerator";
 import { registerBatchTransaction } from "@/services/blockchainService";
-import { insertBatchMetadata } from "@/services/supabaseService";
+import { insertBatchMetadata, insertQrCode } from "@/services/supabaseService";
 
 const registerFormSchema = z.object({
   batchId: z.string().min(3, {
@@ -63,6 +63,7 @@ export default function RegisterPage() {
     batchId: string;
     productName: string;
     batchPDA: string;
+    ownerAddress: string;
   } | null>(null);
   
   const form = useForm<RegisterFormValues>({
@@ -100,6 +101,7 @@ export default function RegisterPage() {
         expDateStr
       );
       
+      // Insert batch metadata
       await insertBatchMetadata({
         batch_id: data.batchId,
         product_name: data.productName,
@@ -113,7 +115,21 @@ export default function RegisterPage() {
         init_tx_signature: txSignature,
       });
       
-      setRegisteredBatch({ txSignature, batchId, productName, batchPDA });
+      // Insert QR code data
+      await insertQrCode({
+        tx_signature: txSignature,
+        batch_id: data.batchId,
+        medicine_name: data.productName,
+        owner_address: publicKey,
+      });
+      
+      setRegisteredBatch({ 
+        txSignature, 
+        batchId, 
+        productName, 
+        batchPDA,
+        ownerAddress: publicKey 
+      });
       
       toast({
         title: "Batch registered successfully",
@@ -229,8 +245,8 @@ export default function RegisterPage() {
                           <span className="font-mono text-sm">{registeredBatch.txSignature.substring(0, 8)}...</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Batch PDA:</span>
-                          <span className="font-mono text-sm">{registeredBatch.batchPDA.substring(0, 8)}...</span>
+                          <span className="text-muted-foreground">Owner:</span>
+                          <span className="font-mono text-sm">{registeredBatch.ownerAddress.substring(0, 8)}...</span>
                         </div>
                       </div>
                     </div>
@@ -242,14 +258,14 @@ export default function RegisterPage() {
                       </h3>
                       <p className="text-sm text-muted-foreground mb-4">
                         Use the QR code to verify the authenticity of this batch throughout the supply chain.
-                        Anyone can scan this code to verify the batch on the blockchain.
+                        Anyone can scan this code to verify the transaction on the blockchain.
                       </p>
                       <div className="flex gap-3">
                         <Button onClick={() => setRegisteredBatch(null)} variant="outline" size="sm">
                           Register Another Batch
                         </Button>
                         <Button 
-                          onClick={() => router.push(`/verify?batchPDA=${registeredBatch.batchPDA}`)}
+                          onClick={() => router.push(`/verify?txSignature=${registeredBatch.txSignature}`)}
                           size="sm"
                         >
                           View Verification
@@ -260,9 +276,10 @@ export default function RegisterPage() {
                   
                   <div className="flex justify-center">
                     <QrGenerator 
-                      batchPDA={registeredBatch.batchPDA}
+                      txSignature={registeredBatch.txSignature}
                       batchId={registeredBatch.batchId}
                       medicineName={registeredBatch.productName}
+                      ownerAddress={registeredBatch.ownerAddress}
                       size={280} 
                     />
                   </div>
@@ -498,7 +515,7 @@ export default function RegisterPage() {
                         <div>
                           <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Generate QR Code</h4>
                           <p className="text-sm text-green-700 dark:text-green-300">
-                            A unique QR code is created with the batch PDA and batch info.
+                            A unique QR code is created with the transaction hash and batch info.
                           </p>
                         </div>
                       </div>
@@ -510,7 +527,7 @@ export default function RegisterPage() {
                         <div>
                           <h4 className="font-medium mb-1 text-orange-900 dark:text-orange-100">Track & Verify</h4>
                           <p className="text-sm text-orange-700 dark:text-orange-300">
-                            Anyone can scan the QR code to verify authenticity on the blockchain.
+                            Anyone can scan the QR code to verify the transaction on the blockchain.
                           </p>
                         </div>
                       </div>

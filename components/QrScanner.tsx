@@ -353,7 +353,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                   Paste the QR code JSON content below:
                 </p>
                 <Textarea
-                  placeholder='{"batchPDA": "...", "timestamp": "..."}'
+                  placeholder='{"txSignature": "...", "batchId": "...", "medicineName": "...", "ownerAddress": "...", "timestamp": "..."}'
                   value={manualInput}
                   onChange={(e) => setManualInput(e.target.value)}
                   className="min-h-[150px] font-mono text-xs"

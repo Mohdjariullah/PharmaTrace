@@ -5,15 +5,12 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { QrCodePayload } from "@/types";
 import QrScanner from "@/components/QrScanner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, ScanLine, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 
 export default function ScanPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [scanning, setScanning] = useState(true);
   const [scannedPayload, setScannedPayload] = useState<QrCodePayload | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -32,7 +29,7 @@ export default function ScanPage() {
 
   const handleVerify = () => {
     if (!scannedPayload) return;
-    router.push(`/verify?batchPDA=${scannedPayload.batchPDA}`);
+    router.push(`/verify?txSignature=${scannedPayload.txSignature}`);
   };
 
   return (
@@ -82,7 +79,7 @@ export default function ScanPage() {
                     <CheckCircle2 className="h-4 w-4 text-primary" />
                   </div>
                   <div className="text-sm">
-                    Once scanned, you'll be able to verify the batch's authenticity and view its complete history.
+                    Once scanned, you'll be able to verify the batch's authenticity and view its transaction history.
                   </div>
                 </div>
               </CardContent>
@@ -103,9 +100,30 @@ export default function ScanPage() {
                 <>
                   <div className="space-y-3">
                     <div className="p-4 rounded-lg bg-primary/10">
-                      <div className="text-sm text-muted-foreground mb-1">Batch PDA</div>
+                      <div className="text-sm text-muted-foreground mb-1">Transaction Hash</div>
                       <div className="font-mono text-sm break-all">
-                        {scannedPayload?.batchPDA}
+                        {scannedPayload?.txSignature}
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 rounded-lg bg-muted">
+                      <div className="text-sm text-muted-foreground mb-1">Batch ID</div>
+                      <div className="font-mono text-sm">
+                        {scannedPayload?.batchId}
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 rounded-lg bg-muted">
+                      <div className="text-sm text-muted-foreground mb-1">Medicine Name</div>
+                      <div className="text-sm">
+                        {scannedPayload?.medicineName}
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 rounded-lg bg-muted">
+                      <div className="text-sm text-muted-foreground mb-1">Owner Address</div>
+                      <div className="font-mono text-sm break-all">
+                        {scannedPayload?.ownerAddress}
                       </div>
                     </div>
                     
@@ -122,7 +140,7 @@ export default function ScanPage() {
                       Scan Another
                     </Button>
                     <Button onClick={handleVerify}>
-                      Verify Batch
+                      Verify on Blockchain
                     </Button>
                   </div>
                 </>
