@@ -164,7 +164,7 @@ export async function verifyBatchTransaction(txSignature: string): Promise<{
 
     // Get transaction details
     const message = transaction.transaction.message;
-    const accountKeys = message.staticAccountKeys || message.accountKeys;
+    const accountKeys = message.getAccountKeys();
     
     if (!accountKeys || accountKeys.length < 2) {
       return {
@@ -173,8 +173,15 @@ export async function verifyBatchTransaction(txSignature: string): Promise<{
       };
     }
 
-    const fromAccount = accountKeys[0].toString();
-    const toAccount = accountKeys[1].toString();
+    const fromAccount = accountKeys.get(0)?.toString();
+    const toAccount = accountKeys.get(1)?.toString();
+
+    if (!fromAccount || !toAccount) {
+      return {
+        isValid: false,
+        error: 'Could not retrieve account information'
+      };
+    }
 
     // Verify the transaction was sent to our PharmaTrace account
     const isPharmaTraceTransaction = toAccount === PHARMATRACE_PUBLIC_KEY.toString();
