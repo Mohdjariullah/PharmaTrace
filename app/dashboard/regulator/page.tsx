@@ -52,7 +52,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function RegulatorPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { connected, publicKey } = useWalletContext();
+  const { connected, publicKey, wallet } = useWalletContext();
 
   const [batches, setBatches] = useState<Batch[]>([]);
   const [filteredBatches, setFilteredBatches] = useState<Batch[]>([]);
@@ -129,14 +129,14 @@ export default function RegulatorPage() {
   };
 
   const handleFlagBatch = async () => {
-    if (!selectedBatch || !publicKey) return;
+    if (!selectedBatch || !wallet) return;
     
     try {
       setFlagging(true);
       
       // Call blockchain service to flag batch
       const txSignature = await flagBatchOnChain(
-        { publicKey }, // Using a simplified wallet adapter
+        wallet,
         selectedBatch.batch_pda,
         flagReason
       );

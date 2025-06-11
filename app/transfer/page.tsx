@@ -58,7 +58,7 @@ type TransferFormValues = z.infer<typeof transferFormSchema>;
 export default function TransferPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const { connected, publicKey } = useWalletContext();
+  const { connected, publicKey, wallet } = useWalletContext();
   
   const [submitting, setSubmitting] = useState(false);
   const [ownedBatches, setOwnedBatches] = useState<Batch[]>([]);
@@ -109,7 +109,7 @@ export default function TransferPage() {
   };
 
   const onSubmit = async (data: TransferFormValues) => {
-    if (!connected || !publicKey) {
+    if (!connected || !publicKey || !wallet) {
       toast({
         title: "Wallet not connected",
         description: "Please connect your wallet to transfer a batch.",
@@ -143,7 +143,7 @@ export default function TransferPage() {
       
       // Transfer batch on blockchain
       const txSignature = await transferBatchOnChain(
-        { publicKey }, // Simplified wallet adapter for now
+        wallet,
         data.batchPDA,
         data.newOwnerWallet
       );
