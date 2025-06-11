@@ -180,7 +180,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
     const reader = new FileReader();
     
     reader.onload = (e) => {
-      const img = new Image();
+      const img = document.createElement('img');
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
