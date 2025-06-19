@@ -1,4 +1,5 @@
 "use client";
+
 import React from "react";
 import { Pill, ArrowRight, Shield, Zap, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,14 +18,14 @@ export default function Hero({ title, subtitle, className }: HeroProps) {
       {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%239C92AC\" fill-opacity=\"0.1\"%3E%3Ccircle cx=\"30\" cy=\"30\" r=\"2\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
-        
+
         {/* Floating Elements */}
         <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-20 animate-pulse"></div>
         <div className="absolute top-40 right-20 w-16 h-16 bg-gradient-to-r from-pink-400 to-red-500 rounded-full opacity-20 animate-pulse delay-1000"></div>
         <div className="absolute bottom-40 left-20 w-24 h-24 bg-gradient-to-r from-green-400 to-blue-500 rounded-full opacity-20 animate-pulse delay-2000"></div>
         <div className="absolute bottom-20 right-10 w-18 h-18 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full opacity-20 animate-pulse delay-500"></div>
       </div>
-      
+
       <div className="container mx-auto px-4 relative z-10 pt-20">
         <div className="flex justify-center mb-8">
           <div className="flex items-center gap-3 bg-gradient-to-r from-blue-600/10 to-purple-600/10 backdrop-blur-sm border border-blue-200/20 dark:border-blue-700/20 text-blue-700 dark:text-blue-300 px-6 py-3 rounded-full shadow-lg">
@@ -36,18 +37,18 @@ export default function Hero({ title, subtitle, className }: HeroProps) {
             <Zap className="h-4 w-4 text-yellow-500" />
           </div>
         </div>
-        
+
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
               {title}
             </span>
           </h1>
-          
+
           <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
             {subtitle}
           </p>
-          
+
           <div className="flex flex-col sm:flex-row justify-center gap-6 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
             <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200">
               <Link href="/dashboard" className="flex items-center gap-2">
@@ -74,7 +75,7 @@ export default function Hero({ title, subtitle, className }: HeroProps) {
                 <div className="text-sm">Immutable verification</div>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-center gap-3 text-gray-600 dark:text-gray-400">
               <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
                 <Zap className="h-6 w-6 text-white" />
@@ -84,7 +85,7 @@ export default function Hero({ title, subtitle, className }: HeroProps) {
                 <div className="text-sm">Instant verification</div>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-center gap-3 text-gray-600 dark:text-gray-400">
               <div className="w-12 h-12 bg-gradient-to-r from-orange-400 to-red-500 rounded-full flex items-center justify-center">
                 <Globe className="h-6 w-6 text-white" />
@@ -98,6 +99,5 @@ export default function Hero({ title, subtitle, className }: HeroProps) {
         </div>
       </div>
     </div>
-  )
   );
 }
