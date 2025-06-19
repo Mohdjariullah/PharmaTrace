@@ -11,18 +11,13 @@ const footerLinks = {
     { name: "Register Batch", href: "/register" },
     { name: "Scan QR", href: "/scan" },
     { name: "Verify", href: "/verify" },
+    { name: "Transfer Batch", href: "/transfer" },
   ],
   company: [
     { name: "About Us", href: "#" },
-    { name: "Careers", href: "#" },
-    { name: "Press", href: "#" },
-    { name: "Contact", href: "#" },
-  ],
-  resources: [
     { name: "Documentation", href: "#" },
-    { name: "API Reference", href: "#" },
     { name: "Support", href: "#" },
-    { name: "Status", href: "#" },
+    { name: "API Reference", href: "#" },
   ],
   legal: [
     { name: "Privacy Policy", href: "#" },
@@ -72,7 +67,7 @@ export default function Footer() {
 
       {/* Main Footer */}
       <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand Section */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-6">
@@ -128,23 +123,6 @@ export default function Footer() {
             <h4 className="text-lg font-semibold mb-6 text-white">Company</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-gray-400 hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Resources Links */}
-          <div>
-            <h4 className="text-lg font-semibold mb-6 text-white">Resources</h4>
-            <ul className="space-y-3">
-              {footerLinks.resources.map((link) => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
