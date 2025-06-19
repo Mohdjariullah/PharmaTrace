@@ -2,11 +2,11 @@
 
 import DashboardNavbar from "@/components/DashboardNavbar";
 
-interface DashboardLayoutProps {
+interface RegisterLayoutProps {
   children: React.ReactNode;
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export default function RegisterLayout({ children }: RegisterLayoutProps) {
   return (
     <DashboardNavbar>
       {children}

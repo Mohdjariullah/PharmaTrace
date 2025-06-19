@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/ui/page-header";
 import {
   Card,
   CardContent,
@@ -52,6 +51,9 @@ import {
   AlertCircle,
   XCircle,
   Zap,
+  Copy,
+  Eye,
+  Link as LinkIcon
 } from "lucide-react";
 import Link from "next/link";
 import QrGenerator from "@/components/QrGenerator";
@@ -167,519 +169,523 @@ export default function VerifyPage() {
     fetchBatchData();
   }, [txSignature, batchPDA, toast]);
 
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: `${label} copied to clipboard.`,
+    });
+  };
+
   if (!txSignature && !batchPDA) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        <div className="container mx-auto px-4 py-8">
-          <PageHeader
-            heading="Verify Batch"
-            text="Verify the authenticity of a pharmaceutical batch"
-          />
-          
-          <Card className="max-w-2xl mx-auto mt-8">
-            <CardHeader>
-              <CardTitle>No Transaction to Verify</CardTitle>
-              <CardDescription>
-                No transaction signature or batch PDA was provided for verification.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p>Please scan a QR code or provide a transaction signature to verify a batch.</p>
-            </CardContent>
-            <CardFooter>
-              <Button asChild>
-                <Link href="/scan">Scan QR Code</Link>
-              </Button>
-            </CardFooter>
-          </Card>
+      <div className="space-y-8">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+            Verify Batch
+          </h1>
+          <p className="text-xl text-muted-foreground">
+            Verify the authenticity of pharmaceutical batches
+          </p>
         </div>
+        
+        <Card className="max-w-2xl mx-auto border-0 shadow-xl">
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-2xl flex items-center justify-center">
+              <Shield className="h-8 w-8 text-blue-600" />
+            </div>
+            <CardTitle className="text-2xl">No Transaction to Verify</CardTitle>
+            <CardDescription className="text-lg">
+              No transaction signature or batch PDA was provided for verification.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="mb-6">Please scan a QR code or provide a transaction signature to verify a batch.</p>
+            <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600">
+              <Link href="/scan">
+                <QrCodeIcon className="h-5 w-5 mr-2" />
+                Scan QR Code
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="container mx-auto px-4 py-8">
-        <PageHeader
-          heading="Verify Batch"
-          text="Blockchain verification and authenticity check"
-        />
-        
-        {loading ? (
-          <VerificationSkeleton />
-        ) : (
-          <div className="space-y-6 max-w-6xl mx-auto">
-            {/* Blockchain Verification Alert */}
-            {verificationResult && (
-              <Alert className={`border-2 ${
-                verificationResult.isValid 
-                  ? 'border-green-500 bg-green-50 dark:bg-green-950' 
-                  : 'border-red-500 bg-red-50 dark:bg-red-950'
-              }`}>
-                <div className="flex items-center gap-2">
-                  {verificationResult.isValid ? (
-                    <Shield className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-600" />
-                  )}
-                  <AlertTitle className="text-lg font-semibold">
-                    {verificationResult.isValid ? 'Authentic Transaction ✅' : 'INVALID TRANSACTION ❌'}
-                  </AlertTitle>
-                </div>
-                <AlertDescription className="mt-2">
-                  {verificationResult.isValid ? (
-                    <div className="space-y-2">
-                      <div className="text-sm">This transaction has been verified on the Solana blockchain.</div>
-                      <div className="mt-4 p-3 bg-background/50 rounded-lg">
-                        <div className="text-sm font-medium mb-2">Transaction Details:</div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="flex justify-between">
-                            <span>From:</span>
-                            <span className="font-mono">{truncatePublicKey(verificationResult.fromAccount || '')}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>To:</span>
-                            <span className="font-mono">{truncatePublicKey(verificationResult.toAccount || '')}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Amount:</span>
-                            <span>{((verificationResult.amount || 0) / 1000000000).toFixed(6)} SOL</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Time:</span>
-                            <span>{verificationResult.timestamp ? new Date(verificationResult.timestamp * 1000).toLocaleString() : 'Unknown'}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-red-800 dark:text-red-200">
-                        {verificationResult.error || 'Transaction not found on blockchain'}
-                      </div>
-                      <div className="text-sm">
-                        This may be a fake QR code or an invalid transaction signature.
-                      </div>
-                    </div>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {!verificationResult?.isValid ? (
-              <Card className="max-w-2xl mx-auto border-red-500 bg-red-50 dark:bg-red-950">
-                <CardHeader>
-                  <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
-                    <XCircle className="h-6 w-6" />
-                    INVALID TRANSACTION
-                  </CardTitle>
-                  <CardDescription className="text-red-600 dark:text-red-400">
-                    This transaction was not found on the Solana blockchain.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-red-100 dark:bg-red-900 rounded-lg">
-                      <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2">⚠️ WARNING - POTENTIALLY FAKE</h3>
-                      <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
-                        <li>• This transaction is not registered on the blockchain</li>
-                        <li>• The QR code may be counterfeit or tampered with</li>
-                        <li>• Do not trust this product without proper verification</li>
-                        <li>• Report suspicious products to authorities</li>
-                      </ul>
-                    </div>
-                    
-                    <div className="text-sm text-muted-foreground">
-                      <strong>Transaction Signature:</strong> <span className="font-mono break-all">{txSignature || 'N/A'}</span>
-                    </div>
-                    
-                    <div className="text-sm text-muted-foreground">
-                      <strong>Verification Time:</strong> {new Date().toLocaleString()}
-                    </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+          Batch Verification
+        </h1>
+        <p className="text-xl text-muted-foreground">
+          Blockchain verification and authenticity check
+        </p>
+      </div>
+      
+      {loading ? (
+        <VerificationSkeleton />
+      ) : (
+        <div className="space-y-8 max-w-6xl mx-auto">
+          {/* Blockchain Verification Alert */}
+          {verificationResult && (
+            <Alert className={`border-2 shadow-lg ${
+              verificationResult.isValid 
+                ? 'border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10' 
+                : 'border-red-500 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/10 dark:to-pink-900/10'
+            }`}>
+              <div className="flex items-center gap-3">
+                {verificationResult.isValid ? (
+                  <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-green-600" />
                   </div>
-                </CardContent>
-                <CardFooter className="flex gap-2">
-                  <Button asChild variant="outline">
-                    <Link href="/scan">Scan Another QR Code</Link>
-                  </Button>
-                  {txSignature && (
-                    <Button asChild>
-                      <a href={getExplorerUrl(txSignature)} target="_blank" rel="noopener noreferrer">
-                        Check on Explorer
-                      </a>
-                    </Button>
-                  )}
-                </CardFooter>
-              </Card>
-            ) : (
-              <div className="grid gap-6 lg:grid-cols-3">
-                {/* Batch Information Card */}
-                <Card className="lg:col-span-2">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          {batch?.product_name || qrCode?.medicine_name || 'Unknown Product'}
-                          <Zap className="h-5 w-5 text-blue-500" />
-                        </CardTitle>
-                        <CardDescription>
-                          {batch ? (
-                            <>Batch ID: <span className="font-mono">{batch.batch_id}</span></>
-                          ) : qrCode ? (
-                            <>Batch ID: <span className="font-mono">{qrCode.batch_id}</span></>
-                          ) : (
-                            <>Transaction: <span className="font-mono">{truncatePublicKey(txSignature || '')}</span></>
-                          )}
-                        </CardDescription>
-                      </div>
-                      
-                      {batch && <StatusBadge status={batch.status} expDate={batch.exp_date} />}
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent>
-                    <div className="space-y-6">
-                      {/* Basic Info */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {batch ? (
-                          <>
-                            <div className="space-y-1">
-                              <div className="text-sm text-muted-foreground">Manufacturer</div>
-                              <div className="font-mono text-sm break-all bg-muted/50 p-2 rounded">
-                                {batch.manufacturer_wallet}
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                    <XCircle className="h-6 w-6 text-red-600" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <AlertTitle className="text-xl font-bold">
+                    {verificationResult.isValid ? '✅ Authentic Transaction' : '❌ INVALID TRANSACTION'}
+                  </AlertTitle>
+                  <AlertDescription className="mt-2">
+                    {verificationResult.isValid ? (
+                      <div className="space-y-3">
+                        <div className="text-sm">This transaction has been verified on the Solana blockchain.</div>
+                        <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4">
+                          <div className="text-sm font-medium mb-3">Transaction Details:</div>
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="flex justify-between">
+                              <span>From:</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono">{truncatePublicKey(verificationResult.fromAccount || '')}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => copyToClipboard(verificationResult.fromAccount || '', 'From address')}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
                               </div>
                             </div>
-                            
-                            <div className="space-y-1">
-                              <div className="text-sm text-muted-foreground">Current Owner</div>
-                              <div className="font-mono text-sm break-all bg-muted/50 p-2 rounded">
-                                {batch.current_owner_wallet}
+                            <div className="flex justify-between">
+                              <span>To:</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono">{truncatePublicKey(verificationResult.toAccount || '')}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => copyToClipboard(verificationResult.toAccount || '', 'To address')}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
                               </div>
                             </div>
-                            
-                            <div className="space-y-1">
-                              <div className="text-sm text-muted-foreground">Manufacturing Date</div>
-                              <div className="bg-muted/50 p-2 rounded">{formatDate(batch.mfg_date)}</div>
+                            <div className="flex justify-between">
+                              <span>Amount:</span>
+                              <span>{((verificationResult.amount || 0) / 1000000000).toFixed(6)} SOL</span>
                             </div>
-                            
-                            <div className="space-y-1">
-                              <div className="text-sm text-muted-foreground">Expiry Date</div>
-                              <div className="bg-muted/50 p-2 rounded">{formatDate(batch.exp_date)}</div>
-                            </div>
-                          </>
-                        ) : qrCode ? (
-                          <>
-                            <div className="space-y-1">
-                              <div className="text-sm text-muted-foreground">Medicine Name</div>
-                              <div className="bg-muted/50 p-2 rounded">{qrCode.medicine_name}</div>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <div className="text-sm text-muted-foreground">Owner Address</div>
-                              <div className="font-mono text-sm break-all bg-muted/50 p-2 rounded">
-                                {qrCode.owner_address}
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <div className="text-sm text-muted-foreground">Batch ID</div>
-                              <div className="font-mono bg-muted/50 p-2 rounded">{qrCode.batch_id}</div>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <div className="text-sm text-muted-foreground">Registration Date</div>
-                              <div className="bg-muted/50 p-2 rounded">{formatDate(qrCode.created_at || '')}</div>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="col-span-2 text-center text-muted-foreground py-8">
-                            <div className="flex justify-center mb-2">
-                              <PackageCheck className="h-8 w-8 opacity-20" />
-                            </div>
-                            <p>Transaction verified but no batch details found in database.</p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <Separator />
-                      
-                      {/* Verification Status */}
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Verification Status</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                            <div className="rounded-full p-1.5 bg-primary/10">
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                              <div className="font-medium">Blockchain Verified</div>
-                              <div className="text-sm text-muted-foreground">
-                                This transaction has been verified on the Solana blockchain
-                              </div>
+                            <div className="flex justify-between">
+                              <span>Time:</span>
+                              <span>{verificationResult.timestamp ? new Date(verificationResult.timestamp * 1000).toLocaleString() : 'Unknown'}</span>
                             </div>
                           </div>
-                          
-                          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                            <div className="rounded-full p-1.5 bg-primary/10">
-                              {batch?.status === 1 ? (
-                                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                              ) : (
-                                <Calendar className="h-5 w-5 text-primary" />
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium">Status</div>
-                              <div className="text-sm text-muted-foreground">
-                                {batch ? (
-                                  batch.status === 1 ? "Flagged as suspicious" :
-                                  batch.status === 2 ? "Expired" :
-                                  isBatchExpired(batch.exp_date) ? "Expired" : "Valid"
-                                ) : (
-                                  "Transaction verified"
+                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs">Transaction Signature:</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs">{truncatePublicKey(txSignature || '')}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => copyToClipboard(txSignature || '', 'Transaction signature')}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                                {txSignature && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    asChild
+                                  >
+                                    <a href={getExplorerUrl(txSignature)} target="_blank" rel="noopener noreferrer">
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  </Button>
                                 )}
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                      
-                      <Separator />
-                      
-                      {/* Blockchain Info */}
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Blockchain Information</h3>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Transaction Signature</span>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm">{truncatePublicKey(txSignature || '')}</span>
-                              {txSignature && (
-                                <a 
-                                  href={getExplorerUrl(txSignature)} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-primary hover:text-primary/80"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              )}
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-red-800 dark:text-red-200">
+                          {verificationResult.error || 'Transaction not found on blockchain'}
+                        </div>
+                        <div className="text-sm">
+                          This may be a fake QR code or an invalid transaction signature.
+                        </div>
+                      </div>
+                    )}
+                  </AlertDescription>
+                </div>
+              </div>
+            </Alert>
+          )}
+
+          {!verificationResult?.isValid ? (
+            <Card className="max-w-2xl mx-auto border-red-500 bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/10 dark:to-pink-900/10 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2 text-2xl">
+                  <XCircle className="h-8 w-8" />
+                  INVALID TRANSACTION
+                </CardTitle>
+                <CardDescription className="text-red-600 dark:text-red-400 text-lg">
+                  This transaction was not found on the Solana blockchain.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="p-6 bg-red-100 dark:bg-red-900/20 rounded-xl">
+                    <h3 className="font-semibold text-red-800 dark:text-red-200 mb-3 text-lg">⚠️ WARNING - POTENTIALLY FAKE</h3>
+                    <ul className="text-sm text-red-700 dark:text-red-300 space-y-2">
+                      <li>• This transaction is not registered on the blockchain</li>
+                      <li>• The QR code may be counterfeit or tampered with</li>
+                      <li>• Do not trust this product without proper verification</li>
+                      <li>• Report suspicious products to authorities</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <div>
+                      <strong>Transaction Signature:</strong> 
+                      <span className="font-mono break-all ml-2">{txSignature || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <strong>Verification Time:</strong> {new Date().toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex gap-3">
+                <Button asChild variant="outline" size="lg">
+                  <Link href="/scan">
+                    <QrCodeIcon className="h-5 w-5 mr-2" />
+                    Scan Another QR Code
+                  </Link>
+                </Button>
+                {txSignature && (
+                  <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600">
+                    <a href={getExplorerUrl(txSignature)} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-5 w-5 mr-2" />
+                      Check on Explorer
+                    </a>
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          ) : (
+            <div className="grid gap-8 lg:grid-cols-3">
+              {/* Batch Information Card */}
+              <Card className="lg:col-span-2 border-0 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg pb-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-2xl">
+                        {batch?.product_name || qrCode?.medicine_name || 'Unknown Product'}
+                        <Zap className="h-6 w-6" />
+                      </CardTitle>
+                      <CardDescription className="text-blue-100 text-lg">
+                        {batch ? (
+                          <>Batch ID: <span className="font-mono">{batch.batch_id}</span></>
+                        ) : qrCode ? (
+                          <>Batch ID: <span className="font-mono">{qrCode.batch_id}</span></>
+                        ) : (
+                          <>Transaction: <span className="font-mono">{truncatePublicKey(txSignature || '')}</span></>
+                        )}
+                      </CardDescription>
+                    </div>
+                    
+                    {batch && <StatusBadge status={batch.status} expDate={batch.exp_date} />}
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="p-8">
+                  <div className="space-y-8">
+                    {/* Basic Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {batch ? (
+                        <>
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground font-semibold">Manufacturer</div>
+                            <div className="font-mono text-sm break-all bg-muted/50 p-3 rounded-lg">
+                              {batch.manufacturer_wallet}
                             </div>
                           </div>
                           
-                          {verificationResult?.fromAccount && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-muted-foreground">From Account</span>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-sm">{truncatePublicKey(verificationResult.fromAccount)}</span>
-                                <a 
-                                  href={getExplorerUrl(verificationResult.fromAccount, 'address')} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-primary hover:text-primary/80"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              </div>
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground font-semibold">Current Owner</div>
+                            <div className="font-mono text-sm break-all bg-muted/50 p-3 rounded-lg">
+                              {batch.current_owner_wallet}
                             </div>
-                          )}
+                          </div>
                           
-                          {verificationResult?.toAccount && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-muted-foreground">To Account (PharmaTrace)</span>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-sm">{truncatePublicKey(verificationResult.toAccount)}</span>
-                                <a 
-                                  href={getExplorerUrl(verificationResult.toAccount, 'address')} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-primary hover:text-primary/80"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              </div>
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground font-semibold">Manufacturing Date</div>
+                            <div className="bg-muted/50 p-3 rounded-lg font-medium">{formatDate(batch.mfg_date)}</div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground font-semibold">Expiry Date</div>
+                            <div className="bg-muted/50 p-3 rounded-lg font-medium">{formatDate(batch.exp_date)}</div>
+                          </div>
+                        </>
+                      ) : qrCode ? (
+                        <>
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground font-semibold">Medicine Name</div>
+                            <div className="bg-muted/50 p-3 rounded-lg font-medium">{qrCode.medicine_name}</div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground font-semibold">Owner Address</div>
+                            <div className="font-mono text-sm break-all bg-muted/50 p-3 rounded-lg">
+                              {qrCode.owner_address}
                             </div>
-                          )}
+                          </div>
                           
-                          {verificationResult?.timestamp && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-muted-foreground">Transaction Time</span>
-                              <span>{new Date(verificationResult.timestamp * 1000).toLocaleString()}</span>
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground font-semibold">Batch ID</div>
+                            <div className="font-mono bg-muted/50 p-3 rounded-lg">{qrCode.batch_id}</div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground font-semibold">Registration Date</div>
+                            <div className="bg-muted/50 p-3 rounded-lg font-medium">{formatDate(qrCode.created_at || '')}</div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="col-span-2 text-center text-muted-foreground py-12">
+                          <div className="flex justify-center mb-4">
+                            <PackageCheck className="h-12 w-12 opacity-20" />
+                          </div>
+                          <p className="text-lg">Transaction verified but no batch details found in database.</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <Separator />
+                    
+                    {/* Verification Status */}
+                    <div>
+                      <h3 className="text-xl font-semibold mb-6">Verification Status</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="flex items-start gap-4 p-4 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+                          <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                            <CheckCircle2 className="h-6 w-6 text-green-600" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-green-800 dark:text-green-200">Blockchain Verified</div>
+                            <div className="text-sm text-green-700 dark:text-green-300">
+                              This transaction has been verified on the Solana blockchain
                             </div>
-                          )}
-                          
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Verification Status</span>
-                            <div className="flex items-center gap-1">
-                              <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              <span className="text-green-600 text-sm">Verified</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                          <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                            {batch?.status === 1 ? (
+                              <AlertTriangle className="h-6 w-6 text-amber-500" />
+                            ) : (
+                              <Calendar className="h-6 w-6 text-blue-600" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-blue-800 dark:text-blue-200">Status</div>
+                            <div className="text-sm text-blue-700 dark:text-blue-300">
+                              {batch ? (
+                                batch.status === 1 ? "Flagged as suspicious" :
+                                batch.status === 2 ? "Expired" :
+                                isBatchExpired(batch.exp_date) ? "Expired" : "Valid"
+                              ) : (
+                                "Transaction verified"
+                              )}
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                  
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline" onClick={() => setShowQr(!showQr)}>
-                      <QrCodeIcon className="h-4 w-4 mr-2" />
-                      {showQr ? "Hide QR Code" : "Show QR Code"}
-                    </Button>
-                    
-                    <Button asChild>
-                      <Link href="/scan">
-                        Scan Another
-                      </Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
+                  </div>
+                </CardContent>
                 
-                {/* QR Code or Activity */}
-                <div>
-                  {showQr && qrCode ? (
-                    <QrGenerator 
-                      txSignature={qrCode.tx_signature}
-                      batchId={qrCode.batch_id}
-                      medicineName={qrCode.medicine_name}
-                      ownerAddress={qrCode.owner_address}
-                    />
-                  ) : (
-                    <Card className="h-full">
-                      <CardHeader className="pb-3">
-                        <CardTitle>Batch Activity</CardTitle>
-                        <CardDescription>
-                          History of transfers and flags
-                        </CardDescription>
-                      </CardHeader>
-                      
-                      <CardContent>
-                        <Tabs defaultValue="transfers">
-                          <TabsList className="grid w-full grid-cols-2 mb-4">
-                            <TabsTrigger value="transfers" className="flex items-center gap-1.5">
-                              <ArrowRightLeft className="h-4 w-4" />
-                              Transfers
-                            </TabsTrigger>
-                            <TabsTrigger value="flags" className="flex items-center gap-1.5">
-                              <Flag className="h-4 w-4" />
-                              Flags
-                            </TabsTrigger>
-                          </TabsList>
-                          
-                          <TabsContent value="transfers" className="mt-0">
-                            {transfers.length === 0 ? (
-                              <div className="py-8 text-center text-muted-foreground">
-                                <div className="flex justify-center mb-2">
-                                  <ArrowRightLeft className="h-8 w-8 opacity-20" />
-                                </div>
-                                <p>No transfers recorded yet</p>
-                                <p className="text-sm mt-1">
-                                  This batch has not changed ownership
-                                </p>
+                <CardFooter className="flex justify-between p-8 bg-gray-50 dark:bg-gray-800/50">
+                  <Button variant="outline" onClick={() => setShowQr(!showQr)} size="lg">
+                    <QrCodeIcon className="h-5 w-5 mr-2" />
+                    {showQr ? "Hide QR Code" : "Show QR Code"}
+                  </Button>
+                  
+                  <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600">
+                    <Link href="/scan">
+                      <QrCodeIcon className="h-5 w-5 mr-2" />
+                      Scan Another
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+              
+              {/* QR Code or Activity */}
+              <div>
+                {showQr && qrCode ? (
+                  <QrGenerator 
+                    txSignature={qrCode.tx_signature}
+                    batchId={qrCode.batch_id}
+                    medicineName={qrCode.medicine_name}
+                    ownerAddress={qrCode.owner_address}
+                  />
+                ) : (
+                  <Card className="h-full border-0 shadow-xl">
+                    <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-t-lg pb-4">
+                      <CardTitle>Batch Activity</CardTitle>
+                      <CardDescription className="text-green-100">
+                        History of transfers and flags
+                      </CardDescription>
+                    </CardHeader>
+                    
+                    <CardContent className="p-6">
+                      <Tabs defaultValue="transfers">
+                        <TabsList className="grid w-full grid-cols-2 mb-6">
+                          <TabsTrigger value="transfers" className="flex items-center gap-2">
+                            <ArrowRightLeft className="h-4 w-4" />
+                            Transfers
+                          </TabsTrigger>
+                          <TabsTrigger value="flags" className="flex items-center gap-2">
+                            <Flag className="h-4 w-4" />
+                            Flags
+                          </TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="transfers" className="mt-0">
+                          {transfers.length === 0 ? (
+                            <div className="py-12 text-center text-muted-foreground">
+                              <div className="flex justify-center mb-4">
+                                <ArrowRightLeft className="h-12 w-12 opacity-20" />
                               </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {transfers.map((transfer) => (
-                                  <div 
-                                    key={transfer.id} 
-                                    className="p-3 border rounded-lg"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Clock className="h-4 w-4 text-muted-foreground" />
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(transfer.transfer_date).toLocaleString()}
+                              <p className="text-lg font-medium">No transfers recorded yet</p>
+                              <p className="text-sm mt-2">
+                                This batch has not changed ownership
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {transfers.map((transfer) => (
+                                <div 
+                                  key={transfer.id} 
+                                  className="p-4 border rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10"
+                                >
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm text-muted-foreground">
+                                      {new Date(transfer.transfer_date).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="text-sm mb-3">
+                                    <span className="font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded">
+                                      {truncatePublicKey(transfer.from_wallet)}
+                                    </span>
+                                    <span className="mx-3">→</span>
+                                    <span className="font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded">
+                                      {truncatePublicKey(transfer.to_wallet)}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="text-xs">
+                                    <a
+                                      href={getExplorerUrl(transfer.tx_signature)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:text-primary/80 flex items-center gap-1"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      View Transaction
+                                    </a>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </TabsContent>
+                        
+                        <TabsContent value="flags" className="mt-0">
+                          {flags.length === 0 ? (
+                            <div className="py-12 text-center text-muted-foreground">
+                              <div className="flex justify-center mb-4">
+                                <ShieldAlert className="h-12 w-12 opacity-20" />
+                              </div>
+                              <p className="text-lg font-medium">No flags recorded</p>
+                              <p className="text-sm mt-2">
+                                This batch has not been flagged
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {flags.map((flag) => (
+                                <div 
+                                  key={flag.id} 
+                                  className="p-4 border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 dark:border-amber-900 rounded-xl"
+                                >
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <Clock className="h-4 w-4 text-amber-600" />
+                                    <span className="text-sm text-muted-foreground">
+                                      {new Date(flag.flagged_at).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="text-sm mb-3">
+                                    <div className="mb-2">
+                                      <span className="text-muted-foreground">Flagged by: </span>
+                                      <span className="font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded">
+                                        {truncatePublicKey(flag.flagged_by_wallet)}
                                       </span>
                                     </div>
-                                    
-                                    <div className="mt-2 text-sm">
-                                      <span className="font-mono">
-                                        {truncatePublicKey(transfer.from_wallet)}
-                                      </span>
-                                      <span className="mx-2">→</span>
-                                      <span className="font-mono">
-                                        {truncatePublicKey(transfer.to_wallet)}
-                                      </span>
-                                    </div>
-                                    
-                                    <div className="mt-2 text-xs">
-                                      <a
-                                        href={getExplorerUrl(transfer.tx_signature)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-primary hover:text-primary/80 flex items-center gap-1"
-                                      >
-                                        <ExternalLink className="h-3 w-3" />
-                                        View Transaction
-                                      </a>
+                                    <div>
+                                      <span className="text-muted-foreground">Reason: </span>
+                                      <span className="font-medium">{flag.reason}</span>
                                     </div>
                                   </div>
-                                ))}
-                              </div>
-                            )}
-                          </TabsContent>
-                          
-                          <TabsContent value="flags" className="mt-0">
-                            {flags.length === 0 ? (
-                              <div className="py-8 text-center text-muted-foreground">
-                                <div className="flex justify-center mb-2">
-                                  <ShieldAlert className="h-8 w-8 opacity-20" />
-                                </div>
-                                <p>No flags recorded</p>
-                                <p className="text-sm mt-1">
-                                  This batch has not been flagged
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {flags.map((flag) => (
-                                  <div 
-                                    key={flag.id} 
-                                    className="p-3 border border-amber-200 bg-amber-50 dark:bg-amber-950/10 dark:border-amber-900 rounded-lg"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Clock className="h-4 w-4 text-amber-600" />
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(flag.flagged_at).toLocaleString()}
-                                      </span>
-                                    </div>
-                                    
-                                    <div className="mt-2 text-sm">
-                                      <div className="mb-1">
-                                        <span className="text-muted-foreground">Flagged by: </span>
-                                        <span className="font-mono">
-                                          {truncatePublicKey(flag.flagged_by_wallet)}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="text-muted-foreground">Reason: </span>
-                                        <span>{flag.reason}</span>
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="mt-2 text-xs">
-                                      <a
-                                        href={getExplorerUrl(flag.tx_signature)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-amber-600 hover:text-amber-700 flex items-center gap-1"
-                                      >
-                                        <ExternalLink className="h-3 w-3" />
-                                        View Transaction
-                                      </a>
-                                    </div>
+                                  
+                                  <div className="text-xs">
+                                    <a
+                                      href={getExplorerUrl(flag.tx_signature)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-amber-600 hover:text-amber-700 flex items-center gap-1"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      View Transaction
+                                    </a>
                                   </div>
-                                ))}
-                              </div>
-                            )}
-                          </TabsContent>
-                        </Tabs>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -705,8 +711,8 @@ function StatusBadge({ status, expDate }: { status: number; expDate: string }) {
   const Icon = icon;
   
   return (
-    <Badge variant={variant} className="flex items-center gap-1 py-1 px-2">
-      <Icon className="h-3 w-3" />
+    <Badge variant={variant} className="flex items-center gap-2 py-2 px-4 text-sm">
+      <Icon className="h-4 w-4" />
       <span>{label}</span>
     </Badge>
   );
@@ -714,27 +720,27 @@ function StatusBadge({ status, expDate }: { status: number; expDate: string }) {
 
 function VerificationSkeleton() {
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <Skeleton className="h-32 w-full" />
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <Skeleton className="h-40 w-full rounded-2xl" />
+      <div className="grid gap-8 lg:grid-cols-3">
+        <Card className="lg:col-span-2 border-0 shadow-xl">
+          <CardHeader className="pb-4">
             <div className="flex justify-between items-start">
               <div>
-                <Skeleton className="h-6 w-40 mb-2" />
-                <Skeleton className="h-4 w-60" />
+                <Skeleton className="h-8 w-60 mb-3" />
+                <Skeleton className="h-6 w-80" />
               </div>
-              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-8 w-24" />
             </div>
           </CardHeader>
           
-          <CardContent>
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="p-8">
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="space-y-1">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-10 w-full" />
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-12 w-full" />
                   </div>
                 ))}
               </div>
@@ -742,48 +748,34 @@ function VerificationSkeleton() {
               <Separator />
               
               <div>
-                <Skeleton className="h-6 w-48 mb-3" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Skeleton className="h-24 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <Skeleton className="h-6 w-48 mb-3" />
-                <div className="space-y-2">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-36" />
-                    </div>
-                  ))}
+                <Skeleton className="h-8 w-48 mb-6" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Skeleton className="h-32 w-full rounded-xl" />
+                  <Skeleton className="h-32 w-full rounded-xl" />
                 </div>
               </div>
             </div>
           </CardContent>
           
-          <CardFooter className="flex justify-between">
-            <Skeleton className="h-9 w-32" />
-            <Skeleton className="h-9 w-32" />
+          <CardFooter className="flex justify-between p-8">
+            <Skeleton className="h-12 w-40" />
+            <Skeleton className="h-12 w-40" />
           </CardFooter>
         </Card>
         
-        <Card>
-          <CardHeader className="pb-3">
-            <Skeleton className="h-6 w-32 mb-2" />
-            <Skeleton className="h-4 w-48" />
+        <Card className="border-0 shadow-xl">
+          <CardHeader className="pb-4">
+            <Skeleton className="h-8 w-32 mb-3" />
+            <Skeleton className="h-6 w-48" />
           </CardHeader>
           
-          <CardContent>
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
+          <CardContent className="p-6">
+            <div className="space-y-6">
+              <Skeleton className="h-12 w-full" />
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="h-28 w-full" />
+                  <Skeleton key={i} className="h-32 w-full rounded-xl" />
                 ))}
               </div>
             </div>

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Scan, Upload, FileText, X, RotateCcw, Camera, Image, Type } from 'lucide-react';
+import { Scan, Upload, FileText, X, RotateCcw, Camera, Image, Type, Zap } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { parseQrPayload } from '@/services/qrService';
 import { QrCodePayload } from '@/types';
@@ -25,11 +25,13 @@ export default function QrScanner({ onScan }: QrScannerProps) {
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [triedBothFacingModes, setTriedBothFacingModes] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [scanningActive, setScanningActive] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const startCamera = useCallback(async () => {
@@ -43,7 +45,11 @@ export default function QrScanner({ onScan }: QrScannerProps) {
       }
       
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode }
+        video: { 
+          facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
       
       streamRef.current = stream;
@@ -51,6 +57,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+        setScanningActive(true);
       }
       
       setTriedBothFacingModes(false);
@@ -63,7 +70,11 @@ export default function QrScanner({ onScan }: QrScannerProps) {
         
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: alternateFacingMode }
+            video: { 
+              facingMode: alternateFacingMode,
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
           });
           
           streamRef.current = stream;
@@ -72,6 +83,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
             await videoRef.current.play();
+            setScanningActive(true);
           }
           
           return;
@@ -93,6 +105,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
       
       setIsCameraAvailable(false);
       setScanning(false);
+      setScanningActive(false);
     }
   }, [facingMode, triedBothFacingModes]);
 
@@ -105,8 +118,14 @@ export default function QrScanner({ onScan }: QrScannerProps) {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
     
     setScanning(false);
+    setScanningActive(false);
   }, []);
 
   const toggleCamera = () => {
@@ -116,7 +135,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
   };
 
   const captureFrame = useCallback(() => {
-    if (scanning && videoRef.current && canvasRef.current && streamRef.current) {
+    if (scanningActive && videoRef.current && canvasRef.current && streamRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
@@ -132,6 +151,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
         });
         
         if (code) {
+          // Draw detection box
           context.lineWidth = 4;
           context.strokeStyle = '#00FF00';
           context.beginPath();
@@ -146,21 +166,28 @@ export default function QrScanner({ onScan }: QrScannerProps) {
           if (payload) {
             stopCamera();
             onScan(payload);
+            toast({
+              title: "QR Code Detected!",
+              description: "Successfully scanned QR code from camera.",
+            });
             return;
           }
         }
       }
-      
-      requestAnimationFrame(captureFrame);
     }
-  }, [scanning, onScan, stopCamera]);
+  }, [scanningActive, onScan, stopCamera, toast]);
 
+  // Start continuous scanning when camera is active
   useEffect(() => {
-    if (scanning) {
-      const frameId = requestAnimationFrame(captureFrame);
-      return () => cancelAnimationFrame(frameId);
+    if (scanningActive) {
+      scanIntervalRef.current = setInterval(captureFrame, 100); // Scan every 100ms for faster detection
+      return () => {
+        if (scanIntervalRef.current) {
+          clearInterval(scanIntervalRef.current);
+        }
+      };
     }
-  }, [scanning, captureFrame]);
+  }, [scanningActive, captureFrame]);
 
   useEffect(() => {
     if (activeTab === 'camera' && isCameraAvailable) {
@@ -317,46 +344,55 @@ export default function QrScanner({ onScan }: QrScannerProps) {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto overflow-hidden border-2 hover:border-primary/20 transition-all duration-300 bg-white dark:bg-gray-800">
-      <CardContent className="p-6">
+    <Card className="w-full max-w-4xl mx-auto overflow-hidden border-0 shadow-2xl bg-white dark:bg-gray-900">
+      <CardContent className="p-8">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            QR Code Scanner
+          </h2>
+          <p className="text-muted-foreground">
+            Scan, upload, or manually enter QR code data for verification
+          </p>
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 mb-6 bg-gray-100 dark:bg-gray-700">
+          <TabsList className="grid grid-cols-3 mb-8 bg-gray-100 dark:bg-gray-800 h-14">
             <TabsTrigger 
               value="camera" 
               disabled={!isCameraAvailable} 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 h-12"
             >
-              <Camera className="h-4 w-4" />
-              <span className="hidden sm:inline">Camera</span>
+              <Camera className="h-5 w-5" />
+              <span>Camera</span>
             </TabsTrigger>
             <TabsTrigger 
               value="upload" 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 h-12"
             >
-              <Image className="h-4 w-4" />
-              <span className="hidden sm:inline">Upload</span>
+              <Image className="h-5 w-5" />
+              <span>Upload</span>
             </TabsTrigger>
             <TabsTrigger 
               value="manual" 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 h-12"
             >
-              <Type className="h-4 w-4" />
-              <span className="hidden sm:inline">Manual</span>
+              <Type className="h-5 w-5" />
+              <span>Manual</span>
             </TabsTrigger>
           </TabsList>
           
           <TabsContent value="camera">
-            <div className="relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden mb-6 border-2 border-dashed border-gray-300 dark:border-gray-600">
+            <div className="relative aspect-video bg-gray-900 rounded-2xl overflow-hidden mb-6 border-4 border-gray-300 dark:border-gray-600">
               {cameraError ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
-                  <div className="rounded-full bg-red-100 dark:bg-red-900 p-4 mb-4">
-                    <X className="h-8 w-8 text-red-600 dark:text-red-400" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-gray-100 dark:bg-gray-800">
+                  <div className="rounded-full bg-red-100 dark:bg-red-900 p-6 mb-4">
+                    <X className="h-12 w-12 text-red-600 dark:text-red-400" />
                   </div>
-                  <div className="text-red-600 dark:text-red-400 font-medium mb-2">Camera Error</div>
-                  <div className="text-sm text-red-500 dark:text-red-300 text-center mb-4">{cameraError}</div>
-                  <div className="flex gap-2">
+                  <div className="text-red-600 dark:text-red-400 font-medium mb-2 text-lg">Camera Error</div>
+                  <div className="text-sm text-red-500 dark:text-red-300 text-center mb-6 max-w-md">{cameraError}</div>
+                  <div className="flex gap-3">
                     <Button 
-                      size="sm" 
+                      size="lg" 
                       onClick={() => {
                         setIsCameraAvailable(true);
                         setTriedBothFacingModes(false);
@@ -364,16 +400,16 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                       }} 
                       className="flex items-center gap-2"
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      <RotateCcw className="h-5 w-5" />
                       Try Again
                     </Button>
                     <Button 
-                      size="sm" 
+                      size="lg" 
                       variant="outline"
                       onClick={() => setActiveTab('upload')} 
                       className="flex items-center gap-2"
                     >
-                      <Upload className="h-4 w-4" />
+                      <Upload className="h-5 w-5" />
                       Upload Image
                     </Button>
                   </div>
@@ -388,85 +424,97 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                   />
                   <canvas
                     ref={canvasRef}
-                    className="absolute inset-0 w-full h-full object-cover opacity-0"
+                    className="absolute inset-0 w-full h-full object-cover"
                   />
                   {!scanning && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <Skeleton className="w-16 h-16 rounded-full" />
+                      <Skeleton className="w-20 h-20 rounded-full" />
                     </div>
                   )}
-                  <div className="absolute bottom-4 right-4 flex gap-2">
+                  
+                  {/* Scanning overlay */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-12 border-4 border-white/50 rounded-2xl">
+                      <div className="absolute top-0 left-0 w-8 h-8 border-t-8 border-l-8 border-blue-500 rounded-tl-2xl"></div>
+                      <div className="absolute top-0 right-0 w-8 h-8 border-t-8 border-r-8 border-blue-500 rounded-tr-2xl"></div>
+                      <div className="absolute bottom-0 left-0 w-8 h-8 border-b-8 border-l-8 border-blue-500 rounded-bl-2xl"></div>
+                      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-8 border-r-8 border-blue-500 rounded-br-2xl"></div>
+                    </div>
+                    
+                    {scanningActive && (
+                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <div className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2">
+                          <Zap className="h-4 w-4 animate-pulse" />
+                          Scanning for QR codes...
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="absolute bottom-6 right-6 flex gap-3">
                     <Button
-                      size="sm"
+                      size="lg"
                       variant="secondary"
                       onClick={toggleCamera}
-                      className="backdrop-blur-lg bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-700"
+                      className="backdrop-blur-lg bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-700"
                     >
                       Switch Camera
                     </Button>
                   </div>
-                  
-                  {/* Scanning overlay */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute inset-8 border-2 border-white/50 rounded-lg">
-                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
-                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
-                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
-                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
-                    </div>
-                  </div>
                 </>
               )}
             </div>
-            <div className="text-sm text-center text-muted-foreground mb-4">
-              Position the QR code within the scanning area
-            </div>
-            <div className="flex justify-center">
-              <Button 
-                variant={scanning ? "destructive" : "default"} 
-                onClick={scanning ? stopCamera : startCamera}
-                disabled={cameraError !== null}
-                className="flex items-center gap-2 min-w-[160px]"
-                size="lg"
-              >
-                {scanning ? (
-                  <>
-                    <X className="h-4 w-4" /> Stop Scanning
-                  </>
-                ) : (
-                  <>
-                    <Scan className="h-4 w-4" /> Start Scanning
-                  </>
-                )}
-              </Button>
+            <div className="text-center mb-6">
+              <p className="text-muted-foreground mb-4">
+                Position the QR code within the scanning area for automatic detection
+              </p>
+              <div className="flex justify-center">
+                <Button 
+                  variant={scanning ? "destructive" : "default"} 
+                  onClick={scanning ? stopCamera : startCamera}
+                  disabled={cameraError !== null}
+                  className="min-w-[200px] h-12 text-lg"
+                  size="lg"
+                >
+                  {scanning ? (
+                    <>
+                      <X className="h-5 w-5 mr-2" /> Stop Scanning
+                    </>
+                  ) : (
+                    <>
+                      <Scan className="h-5 w-5 mr-2" /> Start Scanning
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </TabsContent>
           
           <TabsContent value="upload">
             <div className="flex flex-col items-center">
-              <div className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-12 text-center mb-6 hover:border-primary/50 transition-colors bg-gray-50 dark:bg-gray-700/50">
-                <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-4 mb-4 inline-flex">
-                  <Upload className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              <div className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-16 text-center mb-6 hover:border-primary/50 transition-colors bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 p-4 mb-6 inline-flex items-center justify-center">
+                  <Upload className="h-12 w-12 text-white" />
                 </div>
-                <h3 className="font-medium mb-2">Upload QR Code Image</h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Select an image file containing a QR code to decode
+                <h3 className="text-2xl font-medium mb-3">Upload QR Code Image</h3>
+                <p className="text-muted-foreground mb-8 max-w-md">
+                  Select an image file containing a QR code to decode automatically
                 </p>
                 <Button 
                   variant="default" 
-                  className="cursor-pointer" 
+                  className="cursor-pointer h-12 px-8 text-lg bg-gradient-to-r from-blue-600 to-purple-600" 
                   size="lg"
                   disabled={isProcessingFile}
                   onClick={handleFileButtonClick}
                 >
                   {isProcessingFile ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                       Processing...
                     </>
                   ) : (
                     <>
-                      <Upload className="h-4 w-4 mr-2" />
+                      <Upload className="h-5 w-5 mr-3" />
                       Choose Image File
                     </>
                   )}
@@ -480,7 +528,7 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                   disabled={isProcessingFile}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Supported formats: JPG, PNG, WEBP, GIF (max 10MB)
               </p>
             </div>
@@ -489,24 +537,24 @@ export default function QrScanner({ onScan }: QrScannerProps) {
           <TabsContent value="manual">
             <div className="space-y-6">
               <div>
-                <h3 className="font-medium mb-2">Manual QR Code Entry</h3>
-                <p className="text-sm text-muted-foreground mb-4">
+                <h3 className="text-2xl font-medium mb-3">Manual QR Code Entry</h3>
+                <p className="text-muted-foreground mb-6">
                   Paste the QR code JSON content below if you have it available:
                 </p>
                 <Textarea
                   placeholder='{"txSignature": "...", "batchId": "...", "medicineName": "...", "ownerAddress": "...", "timestamp": "..."}'
                   value={manualInput}
                   onChange={(e) => setManualInput(e.target.value)}
-                  className="min-h-[120px] font-mono text-xs bg-gray-50 dark:bg-gray-700"
+                  className="min-h-[150px] font-mono text-sm bg-gray-50 dark:bg-gray-800 border-2"
                 />
               </div>
               <Button
                 onClick={handleManualSubmit}
                 disabled={!manualInput.trim()}
-                className="w-full"
+                className="w-full h-12 text-lg bg-gradient-to-r from-blue-600 to-purple-600"
                 size="lg"
               >
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-5 w-5 mr-3" />
                 Parse QR Data
               </Button>
             </div>
