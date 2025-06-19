@@ -97,6 +97,5 @@ export default function Hero({ title, subtitle, className }: HeroProps) {
         </div>
       </div>
     </div>
-  )
   );
 }
