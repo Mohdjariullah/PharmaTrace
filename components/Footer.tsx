@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Pill, Github, Twitter, Linkedin, Mail, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Pill, Github, Twitter, Linkedin, Mail } from "lucide-react";
 
 const footerLinks = {
   product: [
@@ -14,16 +12,16 @@ const footerLinks = {
     { name: "Transfer Batch", href: "/transfer" },
   ],
   company: [
-    { name: "About Us", href: "#" },
-    { name: "Documentation", href: "#" },
-    { name: "Support", href: "#" },
-    { name: "API Reference", href: "#" },
+    { name: "About Us", href: "/about" },
+    { name: "Documentation", href: "/docs" },
+    { name: "Support", href: "/support" },
+    { name: "API Reference", href: "/api-docs" },
   ],
   legal: [
-    { name: "Privacy Policy", href: "#" },
-    { name: "Terms of Service", href: "#" },
-    { name: "Cookie Policy", href: "#" },
-    { name: "Compliance", href: "#" },
+    { name: "Privacy Policy", href: "/privacy" },
+    { name: "Terms of Service", href: "/terms" },
+    { name: "Cookie Policy", href: "/cookies" },
+    { name: "Compliance", href: "/compliance" },
   ],
 };
 
@@ -37,34 +35,6 @@ const socialLinks = [
 export default function Footer() {
   return (
     <footer className="bg-gradient-to-b from-gray-900 to-black text-white">
-      {/* Newsletter Section */}
-      <div className="border-b border-gray-800">
-        <div className="container mx-auto px-4 py-16">
-          <div className="max-w-4xl mx-auto text-center">
-            <h3 className="text-3xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Stay Updated
-              </span>
-            </h3>
-            <p className="text-gray-400 mb-8 text-lg">
-              Get the latest updates on pharmaceutical supply chain security and blockchain innovations.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500"
-              />
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 whitespace-nowrap">
-                Subscribe
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Footer */}
       <div className="container mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
