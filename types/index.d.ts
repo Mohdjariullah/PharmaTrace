@@ -50,4 +50,29 @@ export interface QrCodePayload {
   timestamp: string;
 }
 
+export interface NFTCertificate {
+  id?: string;
+  batch_id: string;
+  mint_address: string;
+  metadata_uri: string;
+  owner_wallet: string;
+  tx_signature: string;
+  created_at?: string;
+}
+
+export interface AuditEvent {
+  id?: string;
+  event_type: 'batch_registered' | 'batch_transferred' | 'batch_flagged' | 'batch_verified' | 'nft_minted' | 'qr_scanned';
+  batch_id?: string;
+  user_wallet: string;
+  transaction_signature?: string;
+  metadata: Record<string, any>;
+  ip_address?: string;
+  user_agent?: string;
+  timestamp: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
+
 export type BatchStatus = 'valid' | 'flagged' | 'expired';
+
+export type Locale = 'en' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'pt' | 'ru' | 'ar' | 'hi';

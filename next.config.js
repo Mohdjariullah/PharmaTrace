@@ -12,6 +12,10 @@ const nextConfig = {
         module: /node_modules\/@supabase\/realtime-js/,
         message: /Critical dependency: the request of a dependency is an expression/,
       },
+      {
+        module: /node_modules\/@metaplex-foundation/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
     ];
     return config;
   },
