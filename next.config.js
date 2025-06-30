@@ -7,7 +7,6 @@ const nextConfig = {
   },
   images: { unoptimized: true },
   webpack: (config) => {
-    config.cache = false;
     config.ignoreWarnings = [
       {
         module: /node_modules\/@supabase\/realtime-js/,
