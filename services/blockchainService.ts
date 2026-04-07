@@ -3,7 +3,8 @@ import {
   Transaction, 
   SystemProgram, 
   LAMPORTS_PER_SOL,
-  sendAndConfirmTransaction
+  sendAndConfirmTransaction,
+  TransactionInstruction
 } from '@solana/web3.js';
 import { connection, PHARMATRACE_PUBLIC_KEY, findBatchPDA } from '@/lib/solana';
 import { WalletContextState } from '@solana/wallet-adapter-react';
@@ -80,15 +81,25 @@ export async function registerBatchTransaction(
       const [batchPDA] = await findBatchPDA(batchId);
       console.log('Batch PDA:', batchPDA.toString());
       
+      // Create memo payload with batch medicine information
+      const memoPayload = JSON.stringify({ batchId, productName, mfgDate, expDate });
+      const memoInstruction = new TransactionInstruction({
+        keys: [{ pubkey: wallet.publicKey!, isSigner: true, isWritable: false }],
+        data: Buffer.from(memoPayload, "utf-8"),
+        programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+      });
+
       // Create a simple SOL transfer transaction to the PharmaTrace account
       // This serves as proof of batch registration
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: wallet.publicKey!,
-          toPubkey: PHARMATRACE_PUBLIC_KEY,
-          lamports: 1000000, // 0.001 SOL as registration fee
-        })
-      );
+      const transaction = new Transaction()
+        .add(memoInstruction)
+        .add(
+          SystemProgram.transfer({
+            fromPubkey: wallet.publicKey!,
+            toPubkey: PHARMATRACE_PUBLIC_KEY,
+            lamports: 1000000, // 0.001 SOL as registration fee
+          })
+        );
 
       // Get recent blockhash
       const { blockhash } = await connection.getLatestBlockhash();

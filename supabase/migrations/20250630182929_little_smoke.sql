@@ -14,7 +14,7 @@
 
 -- Table: public.audit_events
 CREATE TABLE IF NOT EXISTS public.audit_events (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_type text NOT NULL CHECK (event_type IN ('batch_registered', 'batch_transferred', 'batch_flagged', 'batch_verified', 'nft_minted', 'qr_scanned')),
   batch_id text REFERENCES public.batches(batch_id) ON DELETE SET NULL,
   user_wallet text NOT NULL,

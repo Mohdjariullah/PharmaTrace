@@ -33,6 +33,7 @@ import {
   getFlagsByBatch,
   getQrCodeByTxSignature,
   getBatchByPDA,
+  markQrCodeAsConsumed,
 } from "@/services/supabaseService";
 import { verifyBatchTransaction } from "@/services/blockchainService";
 import { Batch, BatchTransfer, BatchFlag, QrCode } from "@/types";
@@ -72,6 +73,7 @@ export default function VerifyPage() {
   const [showQr, setShowQr] = useState(false);
   const [verificationResult, setVerificationResult] = useState<any>(null);
   const [blockchainVerified, setBlockchainVerified] = useState<boolean | null>(null);
+  const [isConsumed, setIsConsumed] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchBatchData = async () => {
@@ -129,6 +131,14 @@ export default function VerifyPage() {
             ]);
             batchData = fetchedBatch;
             qrCodeData = fetchedQrCode;
+          }
+          
+          if (qrCodeData) {
+            if (qrCodeData.is_consumed) {
+              setIsConsumed(true);
+            } else {
+              await markQrCodeAsConsumed(qrCodeData.tx_signature);
+            }
           }
         }
         
@@ -229,6 +239,25 @@ export default function VerifyPage() {
         <VerificationSkeleton />
       ) : (
         <div className="space-y-8 max-w-6xl mx-auto">
+          {/* Consumer Warning Alert */}
+          {isConsumed && (
+            <Alert className="border-2 shadow-lg border-red-500 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/10 dark:to-pink-900/10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <AlertTitle className="text-xl font-bold uppercase text-red-700 dark:text-red-300">
+                    Warning: Product Already Verified
+                  </AlertTitle>
+                  <AlertDescription className="mt-2 text-red-800 dark:text-red-200">
+                    This QR code has <b>already been scanned and verified</b> previously. This could signify that the product is a counterfeit replica using a duplicated QR code, or someone is trying to resell a used product. <b>Do not consume or trust this product.</b>
+                  </AlertDescription>
+                </div>
+              </div>
+            </Alert>
+          )}
+
           {/* Blockchain Verification Alert */}
           {verificationResult && (
             <Alert className={`border-2 shadow-lg ${

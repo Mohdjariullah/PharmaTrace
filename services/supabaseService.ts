@@ -166,6 +166,21 @@ export async function getQrCodesByBatch(batchId: string) {
   return data;
 }
 
+export async function markQrCodeAsConsumed(txSignature: string) {
+  const { data, error } = await supabase
+    .from('qr_codes')
+    .update({ 
+      is_consumed: true,
+      consumed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('tx_signature', txSignature)
+    .select();
+
+  if (error) throw error;
+  return data && data.length > 0 ? data[0] : null;
+}
+
 // Batch transfers
 export async function insertBatchTransfer(transfer: Omit<BatchTransfer, 'id' | 'transfer_date'>) {
   const { data, error } = await supabase

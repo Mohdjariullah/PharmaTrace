@@ -13,7 +13,7 @@
 
 -- Table: public.qr_codes
 CREATE TABLE IF NOT EXISTS public.qr_codes (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tx_signature text UNIQUE NOT NULL,
   batch_id text NOT NULL REFERENCES public.batches(batch_id) ON DELETE CASCADE,
   medicine_name text NOT NULL,

@@ -22,7 +22,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Table: public.batches
 CREATE TABLE IF NOT EXISTS public.batches (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   batch_id text UNIQUE NOT NULL,
   product_name text NOT NULL,
   manufacturer_wallet text NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.batches (
 
 -- Table: public.batch_transfers
 CREATE TABLE IF NOT EXISTS public.batch_transfers (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   batch_id text NOT NULL REFERENCES public.batches(batch_id) ON DELETE CASCADE,
   from_wallet text NOT NULL,
   to_wallet text NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS public.batch_transfers (
 
 -- Table: public.batch_flags
 CREATE TABLE IF NOT EXISTS public.batch_flags (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   batch_id text NOT NULL REFERENCES public.batches(batch_id) ON DELETE CASCADE,
   flagged_by_wallet text NOT NULL,
   reason text NOT NULL,

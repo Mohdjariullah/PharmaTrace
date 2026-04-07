@@ -38,6 +38,8 @@ export interface QrCode {
   batch_id: string;
   medicine_name: string;
   owner_address: string;
+  is_consumed?: boolean;
+  consumed_at?: string;
   created_at?: string;
   updated_at?: string;
 }

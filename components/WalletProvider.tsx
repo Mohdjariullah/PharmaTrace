@@ -7,6 +7,7 @@ import {
   useWallet as useSolWallet 
 } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+// @ts-ignore
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
