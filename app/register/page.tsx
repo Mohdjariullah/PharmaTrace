@@ -33,6 +33,8 @@ import {
 import { registerBatchTransaction } from "@/services/blockchainService";
 import { insertBatchMetadata, insertQrCode, getBatchById } from "@/services/supabaseService";
 import { logBatchRegistration } from "@/services/auditService";
+import { explainTransactionError } from "@/lib/walletErrors";
+import DevnetBalanceNotice from "@/components/DevnetBalanceNotice";
 
 const QrGenerator = dynamic(() => import("@/components/QrGenerator"), {
   ssr: false,
@@ -162,29 +164,20 @@ export default function RegisterPage() {
       
       let errorTitle = "Registration failed";
       let errorDescription = "There was an error registering your batch. Please try again.";
-      
-      // Check for specific errors
-      if (error?.message) {
-        const errorMessage = error.message.toLowerCase();
-        
-        if (errorMessage.includes("already exists")) {
-          errorTitle = "Batch already exists";
-          errorDescription = error.message;
-        } else if (errorMessage.includes("insufficient sol")) {
-          errorTitle = "Insufficient funds";
-          errorDescription = "Your wallet doesn't have enough SOL to cover transaction fees. Please add SOL to your wallet and try again.";
-        } else if (errorMessage.includes("user rejected")) {
-          errorTitle = "Transaction cancelled";
-          errorDescription = "You cancelled the transaction. Please try again when ready.";
-        } else if (errorMessage.includes("blockhash not found")) {
-          errorTitle = "Network error";
-          errorDescription = "Network congestion detected. Please wait a moment and try again.";
-        } else if (errorMessage.includes("duplicate key")) {
-          errorTitle = "Batch ID already exists";
-          errorDescription = "This batch ID is already registered. Please use a different batch ID.";
-        }
+
+      const errorMessage = (error?.message || "").toLowerCase();
+      if (errorMessage.includes("already exists")) {
+        errorTitle = "Batch already exists";
+        errorDescription = error.message;
+      } else if (errorMessage.includes("duplicate key")) {
+        errorTitle = "Batch ID already exists";
+        errorDescription = "This batch ID is already registered. Please use a different batch ID.";
+      } else {
+        const friendly = explainTransactionError(error);
+        errorTitle = friendly.title;
+        errorDescription = friendly.description;
       }
-      
+
       toast({
         title: errorTitle,
         description: errorDescription,
@@ -238,7 +231,13 @@ export default function RegisterPage() {
           Create an immutable record of your pharmaceutical batch on the blockchain
         </p>
       </div>
-      
+
+      {!registeredBatch && publicKey && (
+        <div className="max-w-4xl mx-auto">
+          <DevnetBalanceNotice walletAddress={publicKey} />
+        </div>
+      )}
+
       {registeredBatch ? (
         <div className="max-w-4xl mx-auto">
           <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 shadow-xl">

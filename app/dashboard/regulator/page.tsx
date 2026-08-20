@@ -36,6 +36,8 @@ import { useWalletContext } from "@/components/WalletProvider";
 import { getAllBatches, updateBatchStatus, insertBatchFlag } from "@/services/supabaseService";
 import { flagBatchOnChain } from "@/services/blockchainService";
 import { logBatchFlag } from "@/services/auditService";
+import { explainTransactionError } from "@/lib/walletErrors";
+import DevnetBalanceNotice from "@/components/DevnetBalanceNotice";
 import {
   Table,
   TableBody,
@@ -174,9 +176,10 @@ export default function RegulatorPage() {
       
     } catch (error) {
       console.error("Error flagging batch:", error);
+      const friendly = explainTransactionError(error);
       toast({
-        title: "Error",
-        description: "Failed to flag batch. Please try again.",
+        title: friendly.title,
+        description: friendly.description,
         variant: "destructive",
       });
     } finally {
@@ -190,6 +193,8 @@ export default function RegulatorPage() {
         heading="Regulator Dashboard"
         text="Monitor and manage pharmaceutical batches across the supply chain"
       />
+
+      {publicKey && <DevnetBalanceNotice walletAddress={publicKey} />}
 
       <Card>
         <CardHeader>

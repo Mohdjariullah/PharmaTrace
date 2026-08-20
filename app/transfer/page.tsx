@@ -32,6 +32,8 @@ import { getBatchesByOwner, updateBatchOwner } from "@/services/supabaseService"
 import { transferBatchOnChain, isCurrentOwner } from "@/services/blockchainService";
 import { insertBatchTransfer } from "@/services/supabaseService";
 import { logBatchTransfer } from "@/services/auditService";
+import { explainTransactionError } from "@/lib/walletErrors";
+import DevnetBalanceNotice from "@/components/DevnetBalanceNotice";
 import { Batch } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -178,9 +180,10 @@ export default function TransferPage() {
       
     } catch (error) {
       console.error("Error transferring batch:", error);
+      const friendly = explainTransactionError(error);
       toast({
-        title: "Transfer failed",
-        description: "There was an error transferring the batch. Please try again.",
+        title: friendly.title,
+        description: friendly.description,
         variant: "destructive",
       });
     } finally {
@@ -318,7 +321,13 @@ export default function TransferPage() {
           heading="Transfer Batch"
           text="Transfer ownership of a pharmaceutical batch to another wallet"
         />
-        
+
+        {publicKey && (
+          <div className="max-w-6xl mx-auto mt-8">
+            <DevnetBalanceNotice walletAddress={publicKey} />
+          </div>
+        )}
+
         <div className="max-w-6xl mx-auto mt-8">
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Transfer Form */}
