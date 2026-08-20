@@ -108,6 +108,82 @@ export interface Database {
           flagged_at?: string
         }
       }
+      qr_codes: {
+        Row: {
+          id: string
+          tx_signature: string
+          batch_id: string
+          medicine_name: string
+          owner_address: string
+          is_consumed: boolean
+          consumed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tx_signature: string
+          batch_id: string
+          medicine_name: string
+          owner_address: string
+          is_consumed?: boolean
+          consumed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tx_signature?: string
+          batch_id?: string
+          medicine_name?: string
+          owner_address?: string
+          is_consumed?: boolean
+          consumed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      audit_events: {
+        Row: {
+          id: string
+          event_type: string
+          batch_id: string | null
+          user_wallet: string
+          transaction_signature: string | null
+          metadata: Json
+          ip_address: string | null
+          user_agent: string | null
+          timestamp: string
+          severity: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          event_type: string
+          batch_id?: string | null
+          user_wallet: string
+          transaction_signature?: string | null
+          metadata?: Json
+          ip_address?: string | null
+          user_agent?: string | null
+          timestamp?: string
+          severity?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          event_type?: string
+          batch_id?: string | null
+          user_wallet?: string
+          transaction_signature?: string | null
+          metadata?: Json
+          ip_address?: string | null
+          user_agent?: string | null
+          timestamp?: string
+          severity?: string
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

@@ -167,14 +167,18 @@ export async function getQrCodesByBatch(batchId: string) {
 }
 
 export async function markQrCodeAsConsumed(txSignature: string) {
+  // Guard the update with is_consumed = false so two concurrent scans of the
+  // same QR code can't both "win" a check-then-act race; only the first
+  // update actually flips the row, and returns it.
   const { data, error } = await supabase
     .from('qr_codes')
-    .update({ 
+    .update({
       is_consumed: true,
       consumed_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('tx_signature', txSignature)
+    .eq('is_consumed', false)
     .select();
 
   if (error) throw error;

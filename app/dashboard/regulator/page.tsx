@@ -33,7 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Batch } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useWalletContext } from "@/components/WalletProvider";
-import { getAllBatches } from "@/services/supabaseService";
+import { getAllBatches, updateBatchStatus, insertBatchFlag } from "@/services/supabaseService";
 import { flagBatchOnChain } from "@/services/blockchainService";
 import {
   Table,
@@ -129,7 +129,7 @@ export default function RegulatorPage() {
   };
 
   const handleFlagBatch = async () => {
-    if (!selectedBatch || !wallet) return;
+    if (!selectedBatch || !wallet || !publicKey) return;
     
     try {
       setFlagging(true);
@@ -140,7 +140,17 @@ export default function RegulatorPage() {
         selectedBatch.batch_pda,
         flagReason
       );
-      
+
+      // Persist the flag so it survives a refresh and shows up on the
+      // verify page's Flags tab.
+      await updateBatchStatus(selectedBatch.batch_id, 1);
+      await insertBatchFlag({
+        batch_id: selectedBatch.batch_id,
+        flagged_by_wallet: publicKey,
+        reason: flagReason,
+        tx_signature: txSignature,
+      });
+
       // Update local state
       const updatedBatches = batches.map((batch) =>
         batch.batch_id === selectedBatch.batch_id

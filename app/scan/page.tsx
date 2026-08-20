@@ -40,7 +40,7 @@ export default function ScanPage() {
 
   const handleVerify = () => {
     if (!scannedPayload) return;
-    router.push(`/verify?txSignature=${scannedPayload.txSignature}`);
+    router.push(`/verify?txSignature=${scannedPayload.txSignature}&source=scan`);
   };
 
   return (

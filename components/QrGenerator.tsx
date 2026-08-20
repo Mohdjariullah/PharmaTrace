@@ -108,7 +108,7 @@ export default function QrGenerator({ txSignature, batchId, medicineName, ownerA
                 Batch: {batchId}
               </div>
               <div className="text-xs text-muted-foreground font-mono">
-                TX: {txSignature.substring(0, 8)}...{txSignature.substring(-8)}
+                TX: {txSignature.substring(0, 8)}...{txSignature.slice(-8)}
               </div>
               <div className="text-xs text-muted-foreground">
                 Scan to verify authenticity on blockchain

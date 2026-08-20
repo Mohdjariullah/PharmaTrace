@@ -266,7 +266,7 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Mint Address:</span>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs">{nftCertificate.mintAddress.substring(0, 8)}...{nftCertificate.mintAddress.substring(-8)}</span>
+                <span className="font-mono text-xs">{nftCertificate.mintAddress.substring(0, 8)}...{nftCertificate.mintAddress.slice(-8)}</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -281,7 +281,7 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Token Address:</span>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs">{nftCertificate.tokenAddress.substring(0, 8)}...{nftCertificate.tokenAddress.substring(-8)}</span>
+                <span className="font-mono text-xs">{nftCertificate.tokenAddress.substring(0, 8)}...{nftCertificate.tokenAddress.slice(-8)}</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -296,7 +296,7 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Transaction:</span>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs">{nftCertificate.txSignature.substring(0, 8)}...{nftCertificate.txSignature.substring(-8)}</span>
+                <span className="font-mono text-xs">{nftCertificate.txSignature.substring(0, 8)}...{nftCertificate.txSignature.slice(-8)}</span>
                 <Button
                   variant="ghost"
                   size="sm"

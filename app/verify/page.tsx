@@ -63,6 +63,11 @@ export default function VerifyPage() {
   const searchParams = useSearchParams();
   const txSignature = searchParams.get("txSignature");
   const batchPDA = searchParams.get("batchPDA");
+  // Only a visit that arrived via the actual QR scan flow represents a
+  // real-world scan; internal navigation (post-registration confirmation,
+  // dashboard "Details" links, regulator/transfer views) must not consume
+  // the QR code or it would falsely flag the genuine first scan as reused.
+  const isScanVisit = searchParams.get("source") === "scan";
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(true);
@@ -136,7 +141,7 @@ export default function VerifyPage() {
           if (qrCodeData) {
             if (qrCodeData.is_consumed) {
               setIsConsumed(true);
-            } else {
+            } else if (isScanVisit) {
               await markQrCodeAsConsumed(qrCodeData.tx_signature);
             }
           }
@@ -177,7 +182,7 @@ export default function VerifyPage() {
     };
     
     fetchBatchData();
-  }, [txSignature, batchPDA, toast]);
+  }, [txSignature, batchPDA, isScanVisit, toast]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);

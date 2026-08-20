@@ -1,9 +1,8 @@
-import { 
-  Connection, 
-  PublicKey, 
-  Transaction, 
+import {
+  PublicKey,
+  Transaction,
   SystemProgram,
-  LAMPORTS_PER_SOL
+  Keypair,
 } from '@solana/web3.js';
 import { 
   createCreateMetadataAccountV3Instruction,
@@ -138,8 +137,8 @@ export async function mintNFTCertificate(
     const metadataUri = await uploadMetadata(metadata);
 
     // Generate new mint keypair
-    const mintKeypair = new PublicKey(0); // This would be generated properly
-    const mint = mintKeypair;
+    const mintKeypair = Keypair.generate();
+    const mint = mintKeypair.publicKey;
 
     // Get associated token account
     const tokenAddress = await getAssociatedTokenAddress(
@@ -247,6 +246,10 @@ export async function mintNFTCertificate(
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = wallet.publicKey;
+
+    // The mint account is brand new, so it must co-sign its own creation
+    // before the wallet signs as fee payer.
+    transaction.partialSign(mintKeypair);
 
     // Sign and send transaction
     const signedTransaction = await wallet.signTransaction(transaction);

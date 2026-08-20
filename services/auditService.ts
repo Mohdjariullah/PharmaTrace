@@ -121,7 +121,7 @@ function createDiscordEmbed(event: AuditEvent) {
     },
     {
       name: 'User Wallet',
-      value: `\`${event.user_wallet.substring(0, 8)}...${event.user_wallet.substring(-8)}\``,
+      value: `\`${event.user_wallet.substring(0, 8)}...${event.user_wallet.slice(-8)}\``,
       inline: true
     },
     {

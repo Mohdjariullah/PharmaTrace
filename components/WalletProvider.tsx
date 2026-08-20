@@ -7,10 +7,10 @@ import {
   useWallet as useSolWallet 
 } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-// @ts-ignore
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
+  // @ts-ignore -- package.json "exports" hides this subpackage's type declarations from TS's resolver
 } from '@solana/wallet-adapter-wallets';
 import { NETWORK, RPC_ENDPOINT } from '@/lib/solana';
 import dynamic from 'next/dynamic';
