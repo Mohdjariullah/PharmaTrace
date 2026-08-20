@@ -36,6 +36,9 @@ import {
   markQrCodeAsConsumed,
 } from "@/services/supabaseService";
 import { verifyBatchTransaction } from "@/services/blockchainService";
+import { crossVerifyBatch } from "@/services/blockchainVerificationService";
+import { logBatchVerification } from "@/services/auditService";
+import { useWalletContext } from "@/components/WalletProvider";
 import { Batch, BatchTransfer, BatchFlag, QrCode } from "@/types";
 import {
   CheckCircle2,
@@ -54,10 +57,21 @@ import {
   Zap,
   Copy,
   Eye,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Award,
+  History
 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import QrGenerator from "@/components/QrGenerator";
+import AuditTrail from "@/components/AuditTrail";
+
+// The NFT cert tab pulls in the Metaplex/spl-token stack; only load it
+// when a viewer actually opens that tab.
+const NFTCertificate = dynamic(() => import("@/components/NFTCertificate"), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 w-full" />,
+});
 
 export default function VerifyPage() {
   const searchParams = useSearchParams();
@@ -69,7 +83,8 @@ export default function VerifyPage() {
   // the QR code or it would falsely flag the genuine first scan as reused.
   const isScanVisit = searchParams.get("source") === "scan";
   const { toast } = useToast();
-  
+  const { publicKey } = useWalletContext();
+
   const [loading, setLoading] = useState(true);
   const [batch, setBatch] = useState<Batch | null>(null);
   const [qrCode, setQrCode] = useState<QrCode | null>(null);
@@ -79,6 +94,7 @@ export default function VerifyPage() {
   const [verificationResult, setVerificationResult] = useState<any>(null);
   const [blockchainVerified, setBlockchainVerified] = useState<boolean | null>(null);
   const [isConsumed, setIsConsumed] = useState<boolean>(false);
+  const [crossVerifyDiscrepancies, setCrossVerifyDiscrepancies] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchBatchData = async () => {
@@ -99,6 +115,7 @@ export default function VerifyPage() {
         let batchData: Batch | null = null;
         let qrCodeData: QrCode | null = null;
         let verificationTxSignature = txSignature;
+        let isValidOnChain = false;
         
         // If we have a batchPDA, fetch batch by PDA first
         if (batchPDA) {
@@ -117,7 +134,8 @@ export default function VerifyPage() {
           const verification = await verifyBatchTransaction(verificationTxSignature);
           setVerificationResult(verification);
           setBlockchainVerified(verification.isValid);
-          
+          isValidOnChain = verification.isValid;
+
           if (!verification.isValid) {
             toast({
               title: "⚠️ INVALID TRANSACTION",
@@ -159,11 +177,28 @@ export default function VerifyPage() {
           
           setTransfers(transfersData || []);
           setFlags(flagsData || []);
-          
+
           // Check if batch is expired but not marked as such
           if (batchData.status !== 2 && isBatchExpired(batchData.exp_date)) {
             setBatch({ ...batchData, status: 2 });
           }
+
+          // Cross-check the Supabase record against the real on-chain
+          // Batch account so a database row that was never actually
+          // written on-chain (or was tampered with) doesn't get trusted
+          // blindly.
+          try {
+            const crossVerify = await crossVerifyBatch(batchData.batch_pda, batchData);
+            setCrossVerifyDiscrepancies(crossVerify.isConsistent ? [] : crossVerify.discrepancies);
+          } catch (crossVerifyError) {
+            console.error("Cross-verification error:", crossVerifyError);
+          }
+
+          logBatchVerification(
+            batchData.batch_id,
+            publicKey || "anonymous",
+            isValidOnChain
+          ).catch((auditError) => console.error("Failed to log verification event:", auditError));
         } else if (qrCodeData) {
           // We have QR code data but no batch data
           setQrCode(qrCodeData);
@@ -257,6 +292,30 @@ export default function VerifyPage() {
                   </AlertTitle>
                   <AlertDescription className="mt-2 text-red-800 dark:text-red-200">
                     This QR code has <b>already been scanned and verified</b> previously. This could signify that the product is a counterfeit replica using a duplicated QR code, or someone is trying to resell a used product. <b>Do not consume or trust this product.</b>
+                  </AlertDescription>
+                </div>
+              </div>
+            </Alert>
+          )}
+
+          {/* On-chain / database consistency warning */}
+          {crossVerifyDiscrepancies.length > 0 && (
+            <Alert className="border-2 shadow-lg border-amber-500 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                  <ShieldAlert className="h-6 w-6 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <AlertTitle className="text-xl font-bold uppercase text-amber-700 dark:text-amber-300">
+                    Database / Blockchain Mismatch
+                  </AlertTitle>
+                  <AlertDescription className="mt-2 text-amber-800 dark:text-amber-200">
+                    <p className="mb-2">This batch's stored record doesn't match its on-chain data:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {crossVerifyDiscrepancies.map((d, i) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                    </ul>
                   </AlertDescription>
                 </div>
               </div>
@@ -594,7 +653,7 @@ export default function VerifyPage() {
                     
                     <CardContent className="p-6">
                       <Tabs defaultValue="transfers">
-                        <TabsList className="grid w-full grid-cols-2 mb-6">
+                        <TabsList className="grid w-full grid-cols-4 mb-6">
                           <TabsTrigger value="transfers" className="flex items-center gap-2">
                             <ArrowRightLeft className="h-4 w-4" />
                             Transfers
@@ -603,8 +662,16 @@ export default function VerifyPage() {
                             <Flag className="h-4 w-4" />
                             Flags
                           </TabsTrigger>
+                          <TabsTrigger value="certificate" className="flex items-center gap-2">
+                            <Award className="h-4 w-4" />
+                            Certificate
+                          </TabsTrigger>
+                          <TabsTrigger value="audit" className="flex items-center gap-2">
+                            <History className="h-4 w-4" />
+                            Audit Trail
+                          </TabsTrigger>
                         </TabsList>
-                        
+
                         <TabsContent value="transfers" className="mt-0">
                           {transfers.length === 0 ? (
                             <div className="py-12 text-center text-muted-foreground">
@@ -710,6 +777,14 @@ export default function VerifyPage() {
                               ))}
                             </div>
                           )}
+                        </TabsContent>
+
+                        <TabsContent value="certificate" className="mt-0">
+                          {batch && <NFTCertificate batch={batch} />}
+                        </TabsContent>
+
+                        <TabsContent value="audit" className="mt-0">
+                          {batch && <AuditTrail batchId={batch.batch_id} />}
                         </TabsContent>
                       </Tabs>
                     </CardContent>

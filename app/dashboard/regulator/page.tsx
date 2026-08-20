@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWalletContext } from "@/components/WalletProvider";
 import { getAllBatches, updateBatchStatus, insertBatchFlag } from "@/services/supabaseService";
 import { flagBatchOnChain } from "@/services/blockchainService";
+import { logBatchFlag } from "@/services/auditService";
 import {
   Table,
   TableBody,
@@ -150,6 +151,9 @@ export default function RegulatorPage() {
         reason: flagReason,
         tx_signature: txSignature,
       });
+
+      logBatchFlag(selectedBatch.batch_id, publicKey, flagReason, txSignature)
+        .catch((auditError) => console.error("Failed to log flag event:", auditError));
 
       // Update local state
       const updatedBatches = batches.map((batch) =>

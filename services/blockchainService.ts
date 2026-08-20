@@ -1,12 +1,10 @@
-import { 
-  PublicKey, 
-  Transaction, 
-  SystemProgram, 
+import {
+  PublicKey,
   LAMPORTS_PER_SOL,
-  sendAndConfirmTransaction,
-  TransactionInstruction
+  SystemProgram,
 } from '@solana/web3.js';
-import { connection, PHARMATRACE_PUBLIC_KEY, findBatchPDA } from '@/lib/solana';
+import { connection, PHARMACY_PROGRAM_ID, findBatchPDA } from '@/lib/solana';
+import { getPharmaProgram } from '@/lib/anchor';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 
 async function validateTransaction(signature: string): Promise<boolean> {
@@ -45,12 +43,29 @@ async function retryTransaction<T>(
   throw lastError;
 }
 
+/**
+ * Builds an AnchorProvider-compatible wallet object from a wallet-adapter
+ * WalletContextState. AnchorProvider only needs publicKey/signTransaction/
+ * signAllTransactions, all of which WalletContextState already provides.
+ */
+function toAnchorWallet(wallet: WalletContextState) {
+  if (!wallet.publicKey || !wallet.signTransaction || !wallet.signAllTransactions) {
+    throw new Error('Wallet not properly connected');
+  }
+  return {
+    publicKey: wallet.publicKey,
+    signTransaction: wallet.signTransaction,
+    signAllTransactions: wallet.signAllTransactions,
+  };
+}
+
 export async function registerBatchTransaction(
   wallet: WalletContextState,
   batchId: string,
   productName: string,
   mfgDate: string,
-  expDate: string
+  expDate: string,
+  ipfsHash?: string
 ): Promise<{ txSignature: string; batchId: string; productName: string; batchPDA: string }> {
   if (!wallet.signTransaction || !wallet.publicKey) {
     throw new Error('Wallet not properly connected');
@@ -60,7 +75,7 @@ export async function registerBatchTransaction(
   try {
     const balance = await connection.getBalance(wallet.publicKey);
     const minBalance = 0.01 * LAMPORTS_PER_SOL; // Minimum 0.01 SOL
-    
+
     if (balance < minBalance) {
       throw new Error(`Insufficient SOL balance. You need at least 0.01 SOL for transaction fees. Current balance: ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
     }
@@ -74,46 +89,22 @@ export async function registerBatchTransaction(
   return retryTransaction(async () => {
     try {
       console.log('🔄 Creating batch registration transaction...');
-      console.log('PharmaTrace Account:', PHARMATRACE_PUBLIC_KEY.toString());
       console.log('User Account:', wallet.publicKey!.toString());
-      
+
       // Derive the batch PDA
       const [batchPDA] = await findBatchPDA(batchId);
       console.log('Batch PDA:', batchPDA.toString());
-      
-      // Create memo payload with batch medicine information
-      const memoPayload = JSON.stringify({ batchId, productName, mfgDate, expDate });
-      const memoInstruction = new TransactionInstruction({
-        keys: [{ pubkey: wallet.publicKey!, isSigner: true, isWritable: false }],
-        data: Buffer.from(memoPayload, "utf-8"),
-        programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
-      });
 
-      // Create a simple SOL transfer transaction to the PharmaTrace account
-      // This serves as proof of batch registration
-      const transaction = new Transaction()
-        .add(memoInstruction)
-        .add(
-          SystemProgram.transfer({
-            fromPubkey: wallet.publicKey!,
-            toPubkey: PHARMATRACE_PUBLIC_KEY,
-            lamports: 1000000, // 0.001 SOL as registration fee
-          })
-        );
+      const program = getPharmaProgram(toAnchorWallet(wallet));
 
-      // Get recent blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = wallet.publicKey!;
-
-      // Sign transaction with wallet
-      const signedTransaction = await wallet.signTransaction!(transaction);
-
-      // Send transaction
-      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-      
-      // Wait for confirmation
-      await connection.confirmTransaction(signature, 'confirmed');
+      const signature = await program.methods
+        .initBatch(batchId, productName, mfgDate, expDate, ipfsHash ?? '')
+        .accounts({
+          batchAccount: batchPDA,
+          manufacturer: wallet.publicKey!,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
 
       console.log('✅ Transaction confirmed:', signature);
 
@@ -130,14 +121,14 @@ export async function registerBatchTransaction(
       };
     } catch (error: any) {
       console.error('❌ Blockchain transaction failed:', error);
-      
+
       // Provide more specific error messages
       if (error.message?.includes('insufficient funds')) {
         throw new Error('Insufficient SOL for transaction fees. Please add more SOL to your wallet.');
       } else if (error.message?.includes('Simulation failed')) {
         throw new Error('Transaction simulation failed. Please check your inputs and try again.');
       }
-      
+
       throw error;
     }
   });
@@ -176,64 +167,46 @@ export async function verifyBatchTransaction(txSignature: string): Promise<{
     // Get transaction details
     const message = transaction.transaction.message;
     const accountKeys = message.getAccountKeys();
-    
+
     // Handle different account key structures
-    let fromAccount: string | undefined;
-    let toAccount: string | undefined;
-    
+    let staticKeys: PublicKey[];
     if (Array.isArray(accountKeys)) {
       // Legacy message format
-      if (accountKeys.length < 2) {
-        return {
-          isValid: false,
-          error: 'Invalid transaction structure'
-        };
-      }
-      fromAccount = accountKeys[0]?.toString();
-      toAccount = accountKeys[1]?.toString();
+      staticKeys = accountKeys as unknown as PublicKey[];
     } else {
       // Versioned message format with LoadedAddresses
-      if (!accountKeys.staticAccountKeys || accountKeys.staticAccountKeys.length < 2) {
-        return {
-          isValid: false,
-          error: 'Invalid transaction structure'
-        };
-      }
-      fromAccount = accountKeys.staticAccountKeys[0]?.toString();
-      toAccount = accountKeys.staticAccountKeys[1]?.toString();
+      staticKeys = accountKeys.staticAccountKeys || [];
     }
 
-    if (!fromAccount || !toAccount) {
+    if (!staticKeys.length) {
       return {
         isValid: false,
-        error: 'Could not retrieve account information'
+        error: 'Invalid transaction structure'
       };
     }
 
-    // Verify the transaction was sent to our PharmaTrace account
-    const isPharmaTraceTransaction = toAccount === PHARMATRACE_PUBLIC_KEY.toString();
+    // The signer/fee payer is always the first account key.
+    const fromAccount = staticKeys[0]?.toString();
 
-    if (!isPharmaTraceTransaction) {
+    // Confirm the transaction actually touches the PharmaTrace program -
+    // this is the real signal now that we no longer route a manual "fee"
+    // transfer to a fixed wallet.
+    const touchesPharmaTraceProgram = staticKeys.some(
+      (key) => key.toString() === PHARMACY_PROGRAM_ID.toString()
+    );
+
+    if (!touchesPharmaTraceProgram) {
       return {
         isValid: false,
-        error: 'Transaction was not sent to PharmaTrace verification account'
+        error: 'Transaction does not involve the PharmaTrace program'
       };
-    }
-
-    // Get the amount transferred (from pre and post balances)
-    const preBalances = transaction.meta?.preBalances || [];
-    const postBalances = transaction.meta?.postBalances || [];
-    
-    let amount = 0;
-    if (preBalances.length > 1 && postBalances.length > 1) {
-      amount = preBalances[0] - postBalances[0]; // Amount deducted from sender
     }
 
     return {
       isValid: true,
       fromAccount,
-      toAccount,
-      amount,
+      toAccount: PHARMACY_PROGRAM_ID.toString(),
+      amount: 0,
       timestamp: transaction.blockTime || 0
     };
 
@@ -256,25 +229,17 @@ export async function transferBatchOnChain(
   }
 
   const newOwnerKey = new PublicKey(newOwner);
+  const program = getPharmaProgram(toAnchorWallet(wallet));
 
   return retryTransaction(async () => {
-    // Create a simple SOL transfer transaction to represent ownership transfer
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: wallet.publicKey!,
-        toPubkey: PHARMATRACE_PUBLIC_KEY,
-        lamports: 500000, // 0.0005 SOL as transfer fee
+    const signature = await program.methods
+      .transferBatch()
+      .accounts({
+        batchAccount: new PublicKey(batchPDA),
+        currentOwner: wallet.publicKey!,
+        newOwner: newOwnerKey,
       })
-    );
-
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = wallet.publicKey!;
-
-    const signedTransaction = await wallet.signTransaction!(transaction);
-    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-    
-    await connection.confirmTransaction(signature, 'confirmed');
+      .rpc();
 
     const isValid = await validateTransaction(signature);
     if (!isValid) {
@@ -294,24 +259,16 @@ export async function flagBatchOnChain(
     throw new Error('Wallet not properly connected');
   }
 
+  const program = getPharmaProgram(toAnchorWallet(wallet));
+
   return retryTransaction(async () => {
-    // Create a simple SOL transfer transaction to represent flagging
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: wallet.publicKey!,
-        toPubkey: PHARMATRACE_PUBLIC_KEY,
-        lamports: 100000, // 0.0001 SOL as flagging fee
+    const signature = await program.methods
+      .flagBatch(reason)
+      .accounts({
+        batchAccount: new PublicKey(batchPDA),
+        regulator: wallet.publicKey!,
       })
-    );
-
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = wallet.publicKey!;
-
-    const signedTransaction = await wallet.signTransaction!(transaction);
-    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-    
-    await connection.confirmTransaction(signature, 'confirmed');
+      .rpc();
 
     const isValid = await validateTransaction(signature);
     if (!isValid) {

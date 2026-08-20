@@ -31,6 +31,7 @@ import { isValidPublicKey, truncatePublicKey } from "@/lib/solana";
 import { getBatchesByOwner, updateBatchOwner } from "@/services/supabaseService";
 import { transferBatchOnChain, isCurrentOwner } from "@/services/blockchainService";
 import { insertBatchTransfer } from "@/services/supabaseService";
+import { logBatchTransfer } from "@/services/auditService";
 import { Batch } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -163,7 +164,10 @@ export default function TransferPage() {
       
       // Update batch owner in database
       await updateBatchOwner(selectedBatch.batch_id, data.newOwnerWallet);
-      
+
+      logBatchTransfer(selectedBatch.batch_id, publicKey, data.newOwnerWallet, txSignature)
+        .catch((auditError) => console.error("Failed to log transfer event:", auditError));
+
       // Mark transfer as complete
       setTransferComplete(true);
       

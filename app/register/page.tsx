@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/popover";
 import { registerBatchTransaction } from "@/services/blockchainService";
 import { insertBatchMetadata, insertQrCode, getBatchById } from "@/services/supabaseService";
+import { logBatchRegistration } from "@/services/auditService";
 
 const QrGenerator = dynamic(() => import("@/components/QrGenerator"), {
   ssr: false,
@@ -114,7 +115,8 @@ export default function RegisterPage() {
         data.batchId,
         data.productName,
         mfgDateStr,
-        expDateStr
+        expDateStr,
+        data.ipfsHash || ''
       );
       
       // Insert batch metadata
@@ -138,8 +140,11 @@ export default function RegisterPage() {
         medicine_name: data.productName,
         owner_address: publicKey,
       });
-      
-      setRegisteredBatch({ 
+
+      logBatchRegistration(data.batchId, data.productName, publicKey, txSignature)
+        .catch((auditError) => console.error("Failed to log registration event:", auditError));
+
+      setRegisteredBatch({
         txSignature, 
         batchId, 
         productName, 
