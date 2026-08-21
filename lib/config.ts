@@ -13,8 +13,12 @@ export const SOLANA_CONFIG = {
   NETWORK: validateEnvVar('NEXT_PUBLIC_SOLANA_NETWORK', process.env.NEXT_PUBLIC_SOLANA_NETWORK, 'devnet'),
   RPC_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_RPC', process.env.NEXT_PUBLIC_SOLANA_RPC, clusterApiUrl('devnet')),
   WS_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_WS_ENDPOINT', process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT, 'wss://api.devnet.solana.com'),
-  // Falls back to the real deployed devnet PharmaTrace Anchor program.
-  PROGRAM_ID: validateEnvVar('NEXT_PUBLIC_PROGRAM_ID', process.env.NEXT_PUBLIC_PROGRAM_ID, '7QUnqWD9rAAy5PNCpvXqZxYXfPW7G9SrWKJ3osTWy2EL'),
+  // Falls back to the deployed devnet PharmaTrace Anchor program. The
+  // previous program (7QUnq...Twy2EL) was stale - its deployed bytecode
+  // predated this repo's lib.rs and didn't recognize any of its
+  // instructions. This is a freshly built-and-deployed replacement,
+  // verified end-to-end (register/transfer/flag all confirmed on-chain).
+  PROGRAM_ID: validateEnvVar('NEXT_PUBLIC_PROGRAM_ID', process.env.NEXT_PUBLIC_PROGRAM_ID, 'F3zPqAT13xW9nK8DzcmrovYecipW97eyNzYRu88GV18r'),
 };
 
 // Supabase Configuration
