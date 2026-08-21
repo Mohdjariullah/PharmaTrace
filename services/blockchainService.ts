@@ -6,6 +6,7 @@ import {
 import { connection, PHARMACY_PROGRAM_ID, findBatchPDA } from '@/lib/solana';
 import { getPharmaProgram } from '@/lib/anchor';
 import { WalletContextState } from '@solana/wallet-adapter-react';
+import { withRpcCache, invalidateRpcCache } from '@/lib/rpcCache';
 
 // A deterministic rejection by the on-chain program (wrong owner, batch
 // already flagged, bad input, etc.) will fail identically on every retry -
@@ -112,6 +113,7 @@ export async function registerBatchTransaction(
         .rpc();
 
       console.log('✅ Transaction confirmed:', signature);
+      invalidateRpcCache(`balance:${wallet.publicKey!.toString()}`);
 
       return {
         txSignature: signature,
@@ -145,11 +147,17 @@ export async function verifyBatchTransaction(txSignature: string): Promise<{
   error?: string;
 }> {
   try {
-    // Get transaction details
-    const transaction = await connection.getTransaction(txSignature, {
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0
-    });
+    // A confirmed transaction's data is immutable, so this is safe to
+    // cache well beyond a single render - the verify page re-runs this on
+    // every mount/reload for what's very often the exact same signature.
+    const transaction = await withRpcCache(
+      `getTransaction:${txSignature}`,
+      60_000,
+      () => connection.getTransaction(txSignature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0
+      })
+    );
 
     if (!transaction) {
       return {
@@ -243,6 +251,9 @@ export async function transferBatchOnChain(
       })
       .rpc();
 
+    invalidateRpcCache(`balance:${wallet.publicKey!.toString()}`);
+    invalidateRpcCache(`batchAccount:${batchPDA}`);
+
     return signature;
   });
 }
@@ -266,6 +277,9 @@ export async function flagBatchOnChain(
         regulator: wallet.publicKey!,
       })
       .rpc();
+
+    invalidateRpcCache(`balance:${wallet.publicKey!.toString()}`);
+    invalidateRpcCache(`batchAccount:${batchPDA}`);
 
     return signature;
   });

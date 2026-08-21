@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import { getPharmaProgram } from '@/lib/anchor';
 import { Batch } from '@/types';
+import { withRpcCache } from '@/lib/rpcCache';
 
 // Anchor deserializes a Rust enum with no explicit discriminants (like
 // BatchStatus) into an object keyed by the camelCase variant name, e.g.
@@ -53,8 +54,13 @@ export async function crossVerifyBatch(
 
   let onChainBatch: OnChainBatch | null = null;
   try {
-    const program = getPharmaProgram(READ_ONLY_WALLET);
-    const account: any = await (program.account as any).batch.fetch(new PublicKey(batchPDA));
+    // Short TTL, unlike the transaction cache elsewhere - this account's
+    // state genuinely changes (transfer, flag), just not multiple times
+    // within the same handful of seconds a page render or two would hit it.
+    const account: any = await withRpcCache(`batchAccount:${batchPDA}`, 15_000, () => {
+      const program = getPharmaProgram(READ_ONLY_WALLET);
+      return (program.account as any).batch.fetch(new PublicKey(batchPDA));
+    });
 
     onChainBatch = {
       batchId: account.batchId,

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { connection } from "@/lib/solana";
+import { withRpcCache } from "@/lib/rpcCache";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Droplet, ExternalLink } from "lucide-react";
@@ -28,8 +29,10 @@ export default function DevnetBalanceNotice({ walletAddress }: DevnetBalanceNoti
   useEffect(() => {
     let cancelled = false;
     setChecking(true);
-    connection
-      .getBalance(new PublicKey(walletAddress))
+    // This component mounts fresh on register/transfer/regulator pages, so
+    // navigating between them within a few seconds shouldn't refire an
+    // identical balance check each time.
+    withRpcCache(`balance:${walletAddress}`, 15_000, () => connection.getBalance(new PublicKey(walletAddress)))
       .then((lamports) => {
         if (!cancelled) setBalance(lamports);
       })
