@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Award,
   ExternalLink,
@@ -18,8 +19,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWalletContext } from '@/components/WalletProvider';
-import { mintNFTCertificate, NFTCertificate as NFTCert, NFTMetadata } from '@/services/nftService';
+import { mintNFTCertificate, resolveNFTCertificate, NFTCertificate as NFTCert } from '@/services/nftService';
 import { logNFTMinting } from '@/services/auditService';
+import { insertNFTCertificate, getNFTCertificateByBatchId } from '@/services/supabaseService';
 import { Batch } from '@/types';
 import { getExplorerUrl } from '@/lib/solana';
 
@@ -36,9 +38,41 @@ const CERTIFICATE_FEATURES = [
 
 export default function NFTCertificate({ batch, existingNFT }: NFTCertificateProps) {
   const [minting, setMinting] = useState(false);
+  const [checkingExisting, setCheckingExisting] = useState(!existingNFT);
   const [nftCertificate, setNftCertificate] = useState<NFTCert | null>(existingNFT || null);
   const { toast } = useToast();
   const { connected, wallet, publicKey } = useWalletContext();
+
+  // A certificate minted in an earlier session (by anyone, not just the
+  // current viewer) still exists permanently on-chain - without this, the
+  // component always offered to mint a brand new one, with no memory that
+  // one already exists for this batch.
+  useEffect(() => {
+    if (existingNFT) return;
+
+    let cancelled = false;
+    setCheckingExisting(true);
+
+    getNFTCertificateByBatchId(batch.batch_id)
+      .then(async (record) => {
+        if (!record || cancelled) return;
+        const resolved = await resolveNFTCertificate(
+          record.mint_address,
+          record.owner_wallet,
+          record.tx_signature,
+          record.metadata_uri
+        );
+        if (!cancelled && resolved) setNftCertificate(resolved);
+      })
+      .catch((error) => console.error('Error checking for existing NFT certificate:', error))
+      .finally(() => {
+        if (!cancelled) setCheckingExisting(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [batch.batch_id, existingNFT]);
 
   const handleMintNFT = async () => {
     if (!connected || !wallet || !publicKey) {
@@ -56,6 +90,14 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
       const certificate = await mintNFTCertificate(wallet, batch);
       setNftCertificate(certificate);
 
+      await insertNFTCertificate({
+        batch_id: batch.batch_id,
+        mint_address: certificate.mintAddress,
+        metadata_uri: certificate.metadataUri,
+        owner_wallet: publicKey,
+        tx_signature: certificate.txSignature,
+      });
+
       await logNFTMinting(
         batch.batch_id,
         publicKey,
@@ -64,7 +106,7 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
         {
           product_name: batch.product_name,
           mint_address: certificate.mintAddress,
-          metadata_uri: certificate.metadata.image
+          metadata_uri: certificate.metadataUri
         }
       );
 
@@ -119,6 +161,18 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  if (checkingExisting) {
+    return (
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <Skeleton className="mx-auto h-12 w-12 rounded-md" />
+          <Skeleton className="mx-auto h-5 w-48" />
+          <Skeleton className="mx-auto h-4 w-64" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!nftCertificate) {
     return (

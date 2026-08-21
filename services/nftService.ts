@@ -4,12 +4,13 @@ import {
   SystemProgram,
   Keypair,
 } from '@solana/web3.js';
-import { 
+import {
   createCreateMetadataAccountV3Instruction,
   PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID,
   CreateMetadataAccountV3InstructionAccounts,
   CreateMetadataAccountV3InstructionArgs,
-  DataV2
+  DataV2,
+  Metadata
 } from '@metaplex-foundation/mpl-token-metadata';
 import {
   createInitializeMintInstruction,
@@ -48,6 +49,7 @@ export interface NFTCertificate {
   metadataAddress: string;
   tokenAddress: string;
   txSignature: string;
+  metadataUri: string;
   metadata: NFTMetadata;
 }
 
@@ -263,6 +265,7 @@ export async function mintNFTCertificate(
       metadataAddress: metadataAddress.toString(),
       tokenAddress: tokenAddress.toString(),
       txSignature: signature,
+      metadataUri,
       metadata
     };
 
@@ -273,11 +276,14 @@ export async function mintNFTCertificate(
 }
 
 /**
- * Get NFT certificate information
+ * Get NFT certificate information by reading and deserializing the real
+ * on-chain Metaplex metadata account, then resolving the off-chain JSON at
+ * its `uri` for the fields (description/attributes/image) that don't live
+ * on-chain. Returns null only when the account genuinely doesn't exist or
+ * can't be read - not as a placeholder.
  */
 export async function getNFTCertificate(mintAddress: string): Promise<NFTMetadata | null> {
   try {
-    // Get metadata account
     const mint = new PublicKey(mintAddress);
     const [metadataAddress] = PublicKey.findProgramAddressSync(
       [
@@ -288,21 +294,72 @@ export async function getNFTCertificate(mintAddress: string): Promise<NFTMetadat
       TOKEN_METADATA_PROGRAM_ID
     );
 
-    // Fetch metadata account
     const metadataAccount = await connection.getAccountInfo(metadataAddress);
-    
     if (!metadataAccount) {
       return null;
     }
 
-    // Parse metadata (simplified - in production you'd use proper deserialization)
-    // This is a placeholder implementation
-    return null;
+    // The on-chain account only stores name/symbol/uri directly (plus
+    // royalty/creator info) - the full description/attributes/image live
+    // in the JSON document at `uri`, which mintNFTCertificate wrote as a
+    // data: URI, so it's fetchable directly with no external storage.
+    const onChainMetadata = Metadata.fromAccountInfo(metadataAccount)[0];
+    const uri = onChainMetadata.data.uri?.trim().replace(/\0/g, '');
+    if (!uri) {
+      return null;
+    }
+
+    const response = await fetch(uri);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch metadata JSON at ${uri}: ${response.status}`);
+    }
+
+    return await response.json() as NFTMetadata;
 
   } catch (error) {
     console.error('Error fetching NFT certificate:', error);
     return null;
   }
+}
+
+/**
+ * Reconstruct the full NFTCertificate shape (mint/metadata/token addresses
+ * plus resolved off-chain metadata) for a certificate that was minted in a
+ * previous session. metadataAddress and tokenAddress are both deterministic
+ * PDAs/ATAs derived from the mint, so there's nothing to store for them
+ * beyond the mint address itself - only genuinely re-fetching the metadata
+ * JSON requires a network call.
+ */
+export async function resolveNFTCertificate(
+  mintAddress: string,
+  ownerWallet: string,
+  txSignature: string,
+  metadataUri: string
+): Promise<NFTCertificate | null> {
+  const metadata = await getNFTCertificate(mintAddress);
+  if (!metadata) {
+    return null;
+  }
+
+  const mint = new PublicKey(mintAddress);
+  const [metadataAddress] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('metadata'),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      mint.toBuffer(),
+    ],
+    TOKEN_METADATA_PROGRAM_ID
+  );
+  const tokenAddress = await getAssociatedTokenAddress(mint, new PublicKey(ownerWallet));
+
+  return {
+    mintAddress,
+    metadataAddress: metadataAddress.toString(),
+    tokenAddress: tokenAddress.toString(),
+    txSignature,
+    metadataUri,
+    metadata,
+  };
 }
 
 /**

@@ -97,6 +97,16 @@ export async function crossVerifyBatch(
         `Owner mismatch: database says ${databaseBatch.current_owner_wallet}, blockchain says ${onChainBatch.currentOwner}`
       );
     }
+    if (databaseBatch.mfg_date !== onChainBatch.mfgDate) {
+      discrepancies.push(
+        `Manufacturing date mismatch: database says ${databaseBatch.mfg_date}, blockchain says ${onChainBatch.mfgDate}`
+      );
+    }
+    if (databaseBatch.exp_date !== onChainBatch.expDate) {
+      discrepancies.push(
+        `Expiry date mismatch: database says ${databaseBatch.exp_date}, blockchain says ${onChainBatch.expDate}`
+      );
+    }
     if (databaseBatch.status !== onChainBatch.status) {
       discrepancies.push(
         `Status mismatch: database says ${databaseBatch.status}, blockchain says ${onChainBatch.status}`

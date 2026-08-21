@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
-import { Batch, BatchTransfer, BatchFlag, QrCode } from '@/types';
+import { Batch, BatchTransfer, BatchFlag, QrCode, NFTCertificate } from '@/types';
 
 // Batch methods
 export async function insertBatchMetadata(batch: Omit<Batch, 'id' | 'created_at' | 'updated_at'>) {
@@ -294,6 +294,29 @@ export async function getIncomingTransfersByWallet(walletAddress: string) {
 
   if (error) throw error;
   return data as unknown as (BatchTransfer & { batches: { batch_pda: string; product_name: string } | null })[];
+}
+
+// NFT certificates
+export async function insertNFTCertificate(certificate: Omit<NFTCertificate, 'id' | 'created_at'>) {
+  const { data, error } = await supabase
+    .from('nft_certificates')
+    .insert(certificate)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getNFTCertificateByBatchId(batchId: string) {
+  const { data, error } = await supabase
+    .from('nft_certificates')
+    .select('*')
+    .eq('batch_id', batchId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
 }
 
 // Dashboard queries

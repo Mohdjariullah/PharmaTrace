@@ -146,6 +146,35 @@ export interface Database {
           updated_at?: string
         }
       }
+      nft_certificates: {
+        Row: {
+          id: string
+          batch_id: string
+          mint_address: string
+          metadata_uri: string
+          owner_wallet: string
+          tx_signature: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          batch_id: string
+          mint_address: string
+          metadata_uri: string
+          owner_wallet: string
+          tx_signature: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          batch_id?: string
+          mint_address?: string
+          metadata_uri?: string
+          owner_wallet?: string
+          tx_signature?: string
+          created_at?: string
+        }
+      }
       audit_events: {
         Row: {
           id: string
