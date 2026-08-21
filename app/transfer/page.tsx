@@ -27,7 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useWalletContext } from "@/components/WalletProvider";
 import { isValidPublicKey, truncatePublicKey } from "@/lib/solana";
-import { getBatchesByOwner, updateBatchOwner } from "@/services/supabaseService";
+import { getBatchesByOwner, updateBatchOwner, regenerateQrCodeForTransfer } from "@/services/supabaseService";
 import { transferBatchOnChain } from "@/services/blockchainService";
 import { insertBatchTransfer } from "@/services/supabaseService";
 import { logBatchTransfer } from "@/services/auditService";
@@ -170,6 +170,17 @@ export default function TransferPage() {
       });
 
       await updateBatchOwner(selectedBatch.batch_id, data.newOwnerWallet);
+
+      // The old QR (still showing the previous owner) is no longer the one
+      // anyone should scan. This doesn't affect whether the transfer itself
+      // succeeded - ownership has already moved on-chain and in the
+      // database by this point - so a failure here is logged, not thrown.
+      await regenerateQrCodeForTransfer(
+        selectedBatch.batch_id,
+        txSignature,
+        selectedBatch.product_name,
+        data.newOwnerWallet
+      ).catch((qrError) => console.error("Failed to regenerate QR code after transfer:", qrError));
 
       logBatchTransfer(selectedBatch.batch_id, publicKey, data.newOwnerWallet, txSignature)
         .catch((auditError) => console.error("Failed to log transfer event:", auditError));

@@ -23,6 +23,7 @@ import {
   getTransfersByBatch,
   getFlagsByBatch,
   getQrCodeByTxSignature,
+  getCurrentQrCodeForBatch,
   getBatchByPDA,
   markQrCodeAsConsumed,
 } from "@/services/supabaseService";
@@ -47,7 +48,8 @@ import {
   XCircle,
   Copy,
   Award,
-  History
+  History,
+  RefreshCcw
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -82,6 +84,7 @@ export default function VerifyPage() {
   const [verificationResult, setVerificationResult] = useState<any>(null);
   const [blockchainVerified, setBlockchainVerified] = useState<boolean | null>(null);
   const [isConsumed, setIsConsumed] = useState<boolean>(false);
+  const [isOutdatedQr, setIsOutdatedQr] = useState<boolean>(false);
   const [crossVerifyDiscrepancies, setCrossVerifyDiscrepancies] = useState<string[]>([]);
 
   useEffect(() => {
@@ -108,7 +111,10 @@ export default function VerifyPage() {
           batchData = await getBatchByPDA(batchPDA);
           if (batchData) {
             verificationTxSignature = batchData.init_tx_signature;
-            qrCodeData = await getQrCodeByTxSignature(batchData.init_tx_signature);
+            // Internal links (dashboard, regulator table) always want the
+            // batch's current QR, not necessarily the one from the original
+            // registration - it may have been superseded by a transfer.
+            qrCodeData = await getCurrentQrCodeForBatch(batchData.batch_id);
           }
         }
 
@@ -138,7 +144,12 @@ export default function VerifyPage() {
           }
 
           if (qrCodeData) {
-            if (qrCodeData.is_consumed) {
+            // is_current is a new column - existing rows created before
+            // this feature default to true, so `false` unambiguously means
+            // "a transfer has since issued a newer QR for this batch."
+            if (qrCodeData.is_current === false) {
+              setIsOutdatedQr(true);
+            } else if (qrCodeData.is_consumed) {
               setIsConsumed(true);
             } else if (isScanVisit) {
               await markQrCodeAsConsumed(qrCodeData.tx_signature);
@@ -254,6 +265,24 @@ export default function VerifyPage() {
         <VerificationSkeleton />
       ) : (
         <div className="space-y-6">
+          {/* Outdated QR alert - batch has changed hands since this code was issued */}
+          {isOutdatedQr && (
+            <Alert>
+              <div className="flex items-center gap-3">
+                <RefreshCcw className="h-5 w-5 shrink-0 text-primary" />
+                <div className="flex-1">
+                  <AlertTitle>This QR code has been superseded</AlertTitle>
+                  <AlertDescription className="mt-1">
+                    This batch has changed ownership since this code was issued, and a newer QR
+                    code now represents it. The batch itself is genuine, but this specific code is
+                    no longer the one that should be in circulation - ask the current holder for
+                    the current QR code.
+                  </AlertDescription>
+                </div>
+              </div>
+            </Alert>
+          )}
+
           {/* Consumer warning alert */}
           {isConsumed && (
             <Alert variant="destructive">

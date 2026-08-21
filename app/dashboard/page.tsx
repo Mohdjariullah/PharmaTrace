@@ -18,6 +18,7 @@ import { getBatchStats } from "@/services/supabaseService";
 import { useWalletContext } from "@/components/WalletProvider";
 import { truncatePublicKey } from "@/lib/solana";
 import MyBatches from "@/components/MyBatches";
+import IncomingTransfers from "@/components/IncomingTransfers";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<{
@@ -62,6 +63,8 @@ export default function DashboardPage() {
           Solana Devnet
         </Badge>
       </div>
+
+      {connected && <IncomingTransfers />}
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

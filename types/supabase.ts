@@ -117,6 +117,7 @@ export interface Database {
           owner_address: string
           is_consumed: boolean
           consumed_at: string | null
+          is_current: boolean
           created_at: string
           updated_at: string
         }
@@ -128,6 +129,7 @@ export interface Database {
           owner_address: string
           is_consumed?: boolean
           consumed_at?: string | null
+          is_current?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -139,6 +141,7 @@ export interface Database {
           owner_address?: string
           is_consumed?: boolean
           consumed_at?: string | null
+          is_current?: boolean
           created_at?: string
           updated_at?: string
         }

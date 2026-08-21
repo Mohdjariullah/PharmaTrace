@@ -185,6 +185,45 @@ export async function markQrCodeAsConsumed(txSignature: string) {
   return data && data.length > 0 ? data[0] : null;
 }
 
+export async function getCurrentQrCodeForBatch(batchId: string) {
+  const { data, error } = await supabase
+    .from('qr_codes')
+    .select('*')
+    .eq('batch_id', batchId)
+    .eq('is_current', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+// Called after a successful on-chain transfer. The old QR (still showing
+// the previous owner) is no longer the one anyone should be scanning, so it
+// is retired and a fresh one - tied to the transfer transaction and the new
+// owner - takes over as the batch's current QR code.
+export async function regenerateQrCodeForTransfer(
+  batchId: string,
+  transferTxSignature: string,
+  medicineName: string,
+  newOwnerAddress: string
+) {
+  const { error: retireError } = await supabase
+    .from('qr_codes')
+    .update({ is_current: false, updated_at: new Date().toISOString() })
+    .eq('batch_id', batchId)
+    .eq('is_current', true);
+
+  if (retireError) throw retireError;
+
+  return insertQrCode({
+    tx_signature: transferTxSignature,
+    batch_id: batchId,
+    medicine_name: medicineName,
+    owner_address: newOwnerAddress,
+    is_current: true,
+  });
+}
+
 // Batch transfers
 export async function insertBatchTransfer(transfer: Omit<BatchTransfer, 'id' | 'transfer_date'>) {
   const { data, error } = await supabase
@@ -235,6 +274,26 @@ export async function getFlagsByBatch(batchId: string) {
 
   if (error) throw error;
   return data;
+}
+
+// Transfers where the given wallet is the recipient, newest first - used to
+// show "you've been sent a batch" on the dashboard. Purely a read of
+// existing transfer history; "seen/dismissed" state lives client-side
+// (localStorage) rather than as a new column, so there's nothing to write
+// here and no new RLS surface to get wrong.
+//
+// batch_pda/product_name come along via the batch_transfers.batch_id ->
+// batches.batch_id foreign key - a transfer only has the human-readable
+// batch_id, but /verify needs the on-chain PDA to look the batch up.
+export async function getIncomingTransfersByWallet(walletAddress: string) {
+  const { data, error } = await supabase
+    .from('batch_transfers')
+    .select('*, batches(batch_pda, product_name)')
+    .eq('to_wallet', walletAddress)
+    .order('transfer_date', { ascending: false });
+
+  if (error) throw error;
+  return data as unknown as (BatchTransfer & { batches: { batch_pda: string; product_name: string } | null })[];
 }
 
 // Dashboard queries

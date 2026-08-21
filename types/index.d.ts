@@ -40,6 +40,7 @@ export interface QrCode {
   owner_address: string;
   is_consumed?: boolean;
   consumed_at?: string;
+  is_current?: boolean;
   created_at?: string;
   updated_at?: string;
 }
