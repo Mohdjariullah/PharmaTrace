@@ -1,30 +1,9 @@
-import { Connection, PublicKey, Keypair } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { SOLANA_CONFIG, APP_CONFIG } from './config';
-import bs58 from 'bs58';
 
 // Use centralized configuration
 export const NETWORK = SOLANA_CONFIG.NETWORK;
 export const RPC_ENDPOINT = SOLANA_CONFIG.RPC_ENDPOINT;
-
-// Create PharmaTrace verification keypair from private key.
-// Falls back to a freshly generated (unpersisted) keypair when the
-// configured key is missing or malformed, so a missing/placeholder
-// .env value doesn't crash the whole app on startup.
-function loadPharmaTraceKeypair(): Keypair {
-  try {
-    return Keypair.fromSecretKey(bs58.decode(SOLANA_CONFIG.PHARMATRACE_PRIVATE_KEY));
-  } catch (error) {
-    console.warn(
-      '⚠️ NEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY is missing or not valid base58. ' +
-      'Using a temporary generated keypair instead — set a real key in .env for a stable identity.'
-    );
-    return Keypair.generate();
-  }
-}
-
-export const PHARMATRACE_KEYPAIR = loadPharmaTraceKeypair();
-
-export const PHARMATRACE_PUBLIC_KEY = PHARMATRACE_KEYPAIR.publicKey;
 
 // Program ID for the PharmaTrace Anchor program
 export const PHARMACY_PROGRAM_ID = new PublicKey(SOLANA_CONFIG.PROGRAM_ID);

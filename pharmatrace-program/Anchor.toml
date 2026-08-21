@@ -3,10 +3,10 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-pharmatrace = "7QUnqWD9rAAy5PNCpvXqZxYXfPW7G9SrWKJ3osTWy2EL"
+pharmatrace = "F3zPqAT13xW9nK8DzcmrovYecipW97eyNzYRu88GV18r"
 
 [programs.localnet]
-pharmatrace = "7QUnqWD9rAAy5PNCpvXqZxYXfPW7G9SrWKJ3osTWy2EL"
+pharmatrace = "F3zPqAT13xW9nK8DzcmrovYecipW97eyNzYRu88GV18r"
 
 [registry]
 url = "https://api.apr.dev"

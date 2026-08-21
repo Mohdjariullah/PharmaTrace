@@ -13,7 +13,6 @@ export const SOLANA_CONFIG = {
   NETWORK: validateEnvVar('NEXT_PUBLIC_SOLANA_NETWORK', process.env.NEXT_PUBLIC_SOLANA_NETWORK, 'devnet'),
   RPC_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_RPC', process.env.NEXT_PUBLIC_SOLANA_RPC, clusterApiUrl('devnet')),
   WS_ENDPOINT: validateEnvVar('NEXT_PUBLIC_SOLANA_WS_ENDPOINT', process.env.NEXT_PUBLIC_SOLANA_WS_ENDPOINT, 'wss://api.devnet.solana.com'),
-  PHARMATRACE_PRIVATE_KEY: validateEnvVar('NEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY', process.env.NEXT_PUBLIC_PHARMATRACE_PRIVATE_KEY, 'your_private_key_here'),
   // Falls back to the real deployed devnet PharmaTrace Anchor program.
   PROGRAM_ID: validateEnvVar('NEXT_PUBLIC_PROGRAM_ID', process.env.NEXT_PUBLIC_PROGRAM_ID, '7QUnqWD9rAAy5PNCpvXqZxYXfPW7G9SrWKJ3osTWy2EL'),
 };

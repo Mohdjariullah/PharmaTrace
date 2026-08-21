@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("7QUnqWD9rAAy5PNCpvXqZxYXfPW7G9SrWKJ3osTWy2EL");
+declare_id!("F3zPqAT13xW9nK8DzcmrovYecipW97eyNzYRu88GV18r");
 
 #[program]
 pub mod pharmatrace {
@@ -196,7 +196,7 @@ pub struct Batch {
     pub updated_at: i64,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, PartialEq, Eq)]
 pub enum BatchStatus {
     Valid,
     Flagged,
