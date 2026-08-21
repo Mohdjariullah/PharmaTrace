@@ -50,25 +50,30 @@ export const supabase = createClient<Database>(SUPABASE_CONFIG.URL, SUPABASE_CON
       let lastError: any;
       
       while (attempt < maxRetries) {
+        // Declared outside the try block so the catch below can still see
+        // which response (if any) this attempt got - shouldRetryError needs
+        // it to tell a retryable 429/5xx apart from a non-retryable 4xx.
+        let response: Response | undefined;
+
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 10000);
-          
-          const response = await fetch(url, {
+
+          response = await fetch(url, {
             ...options,
             signal: controller.signal
           });
-          
+
           clearTimeout(timeoutId);
-          
+
           // If response is not ok, check if we should retry
           if (!response.ok) {
             const error = new Error(`HTTP error! status: ${response.status}`);
-            
+
             // For client errors, don't retry and throw immediately with better error message
             if (!shouldRetryError(error, response)) {
               let errorMessage = `Request failed with status ${response.status}`;
-              
+
               try {
                 const errorBody = await response.text();
                 if (errorBody) {
@@ -82,34 +87,38 @@ export const supabase = createClient<Database>(SUPABASE_CONFIG.URL, SUPABASE_CON
               } catch (parseError) {
                 // If we can't parse the error body, use the default message
               }
-              
+
               throw new Error(errorMessage);
             }
-            
+
             throw error;
           }
-          
+
           return response;
         } catch (error: any) {
           lastError = error;
           attempt++;
-          
-          // Don't retry if this is not a retryable error
-          if (!shouldRetryError(error)) {
+
+          // Don't retry if this is not a retryable error. Pass the same
+          // response the try block saw, so a 429/5xx that was already
+          // classified retryable above doesn't get silently reclassified
+          // as non-retryable here just because status-code context is
+          // missing from this second check.
+          if (!shouldRetryError(error, response)) {
             console.error('Supabase request failed (non-retryable):', error);
             throw error;
           }
-          
+
           if (attempt === maxRetries) {
             console.error('Supabase request failed after retries:', error);
             throw new Error('Failed to connect to Supabase. Please check your connection and try again.');
           }
-          
+
           // Exponential backoff
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
         }
       }
-      
+
       throw lastError;
     }
   }

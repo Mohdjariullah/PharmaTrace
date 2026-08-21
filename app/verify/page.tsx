@@ -29,7 +29,7 @@ import {
 } from "@/services/supabaseService";
 import { verifyBatchTransaction } from "@/services/blockchainService";
 import { crossVerifyBatch } from "@/services/blockchainVerificationService";
-import { logBatchVerification } from "@/services/auditService";
+import { logBatchVerification, logQRScan } from "@/services/auditService";
 import { useWalletContext } from "@/components/WalletProvider";
 import { Batch, BatchTransfer, BatchFlag, QrCode } from "@/types";
 import BatchStatusBadge from "@/components/BatchStatusBadge";
@@ -149,10 +149,20 @@ export default function VerifyPage() {
             // "a transfer has since issued a newer QR for this batch."
             if (qrCodeData.is_current === false) {
               setIsOutdatedQr(true);
+              if (isScanVisit) {
+                logQRScan(qrCodeData.batch_id, publicKey || "anonymous", 'invalid', { reason: 'outdated_qr' })
+                  .catch((auditError) => console.error("Failed to log QR scan event:", auditError));
+              }
             } else if (qrCodeData.is_consumed) {
               setIsConsumed(true);
+              if (isScanVisit) {
+                logQRScan(qrCodeData.batch_id, publicKey || "anonymous", 'fake', { reason: 'already_consumed' })
+                  .catch((auditError) => console.error("Failed to log QR scan event:", auditError));
+              }
             } else if (isScanVisit) {
               await markQrCodeAsConsumed(qrCodeData.tx_signature);
+              logQRScan(qrCodeData.batch_id, publicKey || "anonymous", 'success')
+                .catch((auditError) => console.error("Failed to log QR scan event:", auditError));
             }
           }
         }
