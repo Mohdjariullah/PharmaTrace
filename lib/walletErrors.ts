@@ -12,13 +12,46 @@ export interface FriendlyError {
 const DEVNET_FAUCET_HINT =
   "Get free devnet SOL at https://faucet.solana.com, or run \"solana airdrop 2 <your address> --url devnet\" from the Solana CLI.";
 
+// PharmaTrace program errors (pharmatrace-program/src/lib.rs) come back
+// through Anchor as e.g. "AnchorError thrown in src/lib.rs:51. Error Code:
+// NotCurrentOwner. Error Number: 6006. Error Message: You are not the
+// current owner of this batch." - the embedded Error Message is already the
+// exact, correct explanation, so surface it directly instead of a generic
+// "transaction failed".
+const ANCHOR_ERROR_PATTERN = /Error Code:\s*(\w+)\.\s*Error Number:\s*\d+\.\s*Error Message:\s*([^\n]+?)\.?\s*$/;
+
+function humanizeErrorCode(code: string): string {
+  return code.replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
 export function explainTransactionError(error: unknown): FriendlyError {
-  const message = (error instanceof Error ? error.message : String(error ?? '')).toLowerCase();
+  const rawMessage = error instanceof Error ? error.message : String(error ?? '');
+  const message = rawMessage.toLowerCase();
+
+  const anchorMatch = rawMessage.match(ANCHOR_ERROR_PATTERN);
+  if (anchorMatch) {
+    return {
+      title: humanizeErrorCode(anchorMatch[1]),
+      description: anchorMatch[2],
+    };
+  }
 
   if (message.includes('user rejected') || message.includes('user cancelled') || message.includes('rejected the request')) {
     return {
       title: 'Transaction cancelled',
       description: 'You cancelled the transaction in your wallet. Please try again when ready.',
+    };
+  }
+
+  if (
+    message.includes('429') ||
+    message.includes('too many requests') ||
+    message.includes('rate limit') ||
+    message.includes('rate limits exceeded')
+  ) {
+    return {
+      title: 'Devnet is rate-limiting requests',
+      description: "Solana's public devnet RPC is temporarily rejecting requests as too frequent. Wait about 30 seconds and try again.",
     };
   }
 

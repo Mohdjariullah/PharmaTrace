@@ -7,6 +7,20 @@ import { connection, PHARMACY_PROGRAM_ID, findBatchPDA } from '@/lib/solana';
 import { getPharmaProgram } from '@/lib/anchor';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 
+// A deterministic rejection by the on-chain program (wrong owner, batch
+// already flagged, bad input, etc.) will fail identically on every retry -
+// retrying it only burns RPC calls (making devnet 429s more likely) and
+// replaces the real, actionable error message with whatever the RPC layer
+// throws on the final attempt. Only genuine transient failures should retry.
+function isNonRetryableProgramError(error: any): boolean {
+  const message = String(error?.message ?? '');
+  return (
+    error?.name === 'WalletSignTransactionError' ||
+    /AnchorError thrown in/.test(message) ||
+    typeof error?.error?.errorCode?.code === 'string'
+  );
+}
+
 async function retryTransaction<T>(
   operation: () => Promise<T>,
   maxAttempts: number = 3,
@@ -18,8 +32,10 @@ async function retryTransaction<T>(
     try {
       return await operation();
     } catch (error: any) {
-      if (error.name === 'WalletSignTransactionError') {
-        console.error('User rejected signing. Transaction will not be retried.');
+      if (isNonRetryableProgramError(error)) {
+        if (error.name !== 'WalletSignTransactionError') {
+          console.error('Transaction rejected by the program. Will not retry:', error);
+        }
         throw error;
       }
       console.warn(`Transaction attempt ${attempt} failed:`, error);
