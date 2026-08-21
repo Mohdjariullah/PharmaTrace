@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,12 +12,12 @@ import {
   AlertTriangle,
   Calendar,
   Shield,
-  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { getBatchStats } from "@/services/supabaseService";
 import { useWalletContext } from "@/components/WalletProvider";
 import { truncatePublicKey } from "@/lib/solana";
+import MyBatches from "@/components/MyBatches";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<{
@@ -135,25 +134,12 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Getting started - honest empty state instead of fabricated activity feed */}
-      {!loading && stats?.total === 0 && (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md border border-border bg-secondary/60">
-              <Package className="h-5 w-5 text-primary" strokeWidth={1.75} />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground">No batches yet</h3>
-            <p className="mx-auto mt-1 max-w-sm text-muted-foreground">
-              Register your first batch to see it tracked here.
-            </p>
-            <Button asChild className="mt-6 gap-2">
-              <Link href="/register">
-                Register a batch
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+      {/* Your batches - real data fetched for the connected wallet, not a fabricated feed */}
+      {connected && (
+        <div>
+          <h2 className="mb-4 text-sm font-semibold text-foreground">Your batches</h2>
+          <MyBatches />
+        </div>
       )}
     </div>
   );

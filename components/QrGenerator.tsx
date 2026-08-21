@@ -70,69 +70,69 @@ export default function QrGenerator({ txSignature, batchId, medicineName, ownerA
   };
 
   return (
-    <Card className="overflow-hidden border-2 hover:border-primary/20 transition-all duration-300 bg-white dark:bg-gray-800">
+    <Card className="overflow-hidden transition-colors hover:border-primary/40">
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <QrCode className="h-5 w-5 text-primary" />
-          Verification QR Code
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <QrCode className="h-4 w-4 text-primary" strokeWidth={1.75} />
+          Verification QR code
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="flex flex-col items-center">
         {isLoading ? (
           <div className="flex items-center justify-center" style={{ width: size, height: size }}>
-            <Skeleton className="w-full h-full rounded-lg" />
+            <Skeleton className="h-full w-full rounded-lg" />
           </div>
         ) : error ? (
-          <div className="text-destructive text-center p-4 bg-destructive/10 rounded-lg">
-            <p className="font-medium mb-2">Error</p>
+          <div className="rounded-lg bg-destructive/10 p-4 text-center text-destructive">
+            <p className="mb-2 font-medium">Error</p>
             <p className="text-sm">{error}</p>
           </div>
         ) : dataURL ? (
           <>
-            <div className="p-4 bg-white rounded-lg mb-4 shadow-sm hover:shadow-md transition-shadow border">
+            <div className="mb-4 rounded-lg border border-border bg-white p-4">
               <img
                 src={dataURL}
-                alt="Batch Verification QR Code"
+                alt="Batch verification QR code"
                 width={size}
                 height={size}
-                className="max-w-full h-auto"
+                className="h-auto max-w-full"
               />
             </div>
-            
-            <div className="text-center mb-4 space-y-2">
+
+            <div className="mb-4 space-y-2 text-center">
               <div className="text-sm font-medium text-foreground">
                 {medicineName}
               </div>
-              <div className="text-xs text-muted-foreground font-mono">
+              <div className="font-mono text-xs text-muted-foreground">
                 Batch: {batchId}
               </div>
-              <div className="text-xs text-muted-foreground font-mono">
+              <div className="font-mono text-xs text-muted-foreground">
                 TX: {txSignature.substring(0, 8)}...{txSignature.slice(-8)}
               </div>
               <div className="text-xs text-muted-foreground">
                 Scan to verify authenticity on blockchain
               </div>
             </div>
-            
-            <div className="flex gap-2 w-full">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleDownload} 
-                className="flex-1 flex items-center gap-1.5 hover:bg-primary hover:text-primary-foreground"
+
+            <div className="flex w-full gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                className="flex flex-1 items-center gap-1.5"
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-3.5 w-3.5" />
                 Download
               </Button>
               {typeof navigator.share === 'function' && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleShare} 
-                  className="flex-1 flex items-center gap-1.5 hover:bg-primary hover:text-primary-foreground"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShare}
+                  className="flex flex-1 items-center gap-1.5"
                 >
-                  <Share2 className="h-4 w-4" />
+                  <Share2 className="h-3.5 w-3.5" />
                   Share
                 </Button>
               )}

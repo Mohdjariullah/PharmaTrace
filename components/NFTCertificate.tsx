@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Award, 
-  ExternalLink, 
-  Shield, 
-  Zap, 
+import {
+  Award,
+  ExternalLink,
+  Shield,
+  Zap,
   Copy,
   Download,
   Share2,
@@ -28,6 +28,12 @@ interface NFTCertificateProps {
   existingNFT?: NFTCert;
 }
 
+const CERTIFICATE_FEATURES = [
+  { icon: Shield, title: "Immutable proof", description: "Permanent record on blockchain" },
+  { icon: CheckCircle, title: "Authenticity", description: "Cryptographically verified" },
+  { icon: Zap, title: "Transferable", description: "Can be transferred with batch" },
+];
+
 export default function NFTCertificate({ batch, existingNFT }: NFTCertificateProps) {
   const [minting, setMinting] = useState(false);
   const [nftCertificate, setNftCertificate] = useState<NFTCert | null>(existingNFT || null);
@@ -37,7 +43,7 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
   const handleMintNFT = async () => {
     if (!connected || !wallet || !publicKey) {
       toast({
-        title: "Wallet Required",
+        title: "Wallet required",
         description: "Please connect your wallet to mint an NFT certificate.",
         variant: "destructive",
       });
@@ -46,11 +52,10 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
 
     try {
       setMinting(true);
-      
+
       const certificate = await mintNFTCertificate(wallet, batch);
       setNftCertificate(certificate);
 
-      // Log the NFT minting event
       await logNFTMinting(
         batch.batch_id,
         publicKey,
@@ -64,14 +69,14 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
       );
 
       toast({
-        title: "NFT Certificate Minted!",
+        title: "NFT certificate minted",
         description: "Your pharmaceutical batch now has a unique NFT certificate.",
       });
 
     } catch (error: any) {
       console.error('Error minting NFT:', error);
       toast({
-        title: "Minting Failed",
+        title: "Minting failed",
         description: error.message || "Failed to mint NFT certificate. Please try again.",
         variant: "destructive",
       });
@@ -83,14 +88,14 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "Copied!",
+      title: "Copied",
       description: `${label} copied to clipboard.`,
     });
   };
 
   const downloadCertificate = () => {
     if (!nftCertificate) return;
-    
+
     const certificateData = {
       batch_id: batch.batch_id,
       product_name: batch.product_name,
@@ -104,7 +109,7 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
     const blob = new Blob([JSON.stringify(certificateData, null, 2)], {
       type: 'application/json'
     });
-    
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -117,48 +122,30 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
 
   if (!nftCertificate) {
     return (
-      <Card className="border-2 border-dashed border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10">
+      <Card>
         <CardHeader className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center">
-            <Award className="h-8 w-8 text-white" />
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-md border border-border bg-secondary/60">
+            <Award className="h-5 w-5 text-primary" strokeWidth={1.75} />
           </div>
-          <CardTitle className="text-2xl text-purple-800 dark:text-purple-200">
-            NFT Certificate Available
-          </CardTitle>
-          <p className="text-purple-700 dark:text-purple-300">
+          <CardTitle className="text-xl">NFT certificate available</CardTitle>
+          <p className="text-muted-foreground">
             Create a unique digital certificate for this pharmaceutical batch
           </p>
         </CardHeader>
-        
-        <CardContent className="text-center space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex flex-col items-center p-4 bg-white dark:bg-gray-800 rounded-xl border">
-              <Shield className="h-8 w-8 text-blue-600 mb-2" />
-              <h4 className="font-semibold text-sm">Immutable Proof</h4>
-              <p className="text-xs text-muted-foreground text-center">
-                Permanent record on blockchain
-              </p>
-            </div>
-            
-            <div className="flex flex-col items-center p-4 bg-white dark:bg-gray-800 rounded-xl border">
-              <CheckCircle className="h-8 w-8 text-green-600 mb-2" />
-              <h4 className="font-semibold text-sm">Authenticity</h4>
-              <p className="text-xs text-muted-foreground text-center">
-                Cryptographically verified
-              </p>
-            </div>
-            
-            <div className="flex flex-col items-center p-4 bg-white dark:bg-gray-800 rounded-xl border">
-              <Zap className="h-8 w-8 text-purple-600 mb-2" />
-              <h4 className="font-semibold text-sm">Transferable</h4>
-              <p className="text-xs text-muted-foreground text-center">
-                Can be transferred with batch
-              </p>
-            </div>
+
+        <CardContent className="space-y-6 text-center">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {CERTIFICATE_FEATURES.map((feature) => (
+              <div key={feature.title} className="flex flex-col items-center rounded-lg border border-border p-4">
+                <feature.icon className="mb-2 h-5 w-5 text-primary" strokeWidth={1.75} />
+                <h4 className="text-sm font-semibold text-foreground">{feature.title}</h4>
+                <p className="text-center text-xs text-muted-foreground">{feature.description}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border">
-            <h4 className="font-semibold mb-3">Certificate Will Include:</h4>
+          <div className="rounded-lg border border-border p-5 text-left">
+            <h4 className="mb-3 font-semibold text-foreground">Certificate will include</h4>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Batch ID:</span>
@@ -169,31 +156,26 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
                 <span>{batch.product_name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Mfg Date:</span>
+                <span className="text-muted-foreground">Mfg date:</span>
                 <span>{new Date(batch.mfg_date).toLocaleDateString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Exp Date:</span>
+                <span className="text-muted-foreground">Exp date:</span>
                 <span>{new Date(batch.exp_date).toLocaleDateString()}</span>
               </div>
             </div>
           </div>
 
-          <Button
-            onClick={handleMintNFT}
-            disabled={minting || !connected}
-            size="lg"
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-          >
+          <Button onClick={handleMintNFT} disabled={minting || !connected} className="w-full">
             {minting ? (
               <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                Minting NFT Certificate...
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-primary-foreground" />
+                Minting NFT certificate...
               </>
             ) : (
               <>
-                <Award className="h-5 w-5 mr-3" />
-                Mint NFT Certificate
+                <Award className="mr-2 h-4 w-4" />
+                Mint NFT certificate
               </>
             )}
           </Button>
@@ -209,36 +191,35 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
   }
 
   return (
-    <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10 overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+    <Card className="overflow-hidden">
+      <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Award className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-secondary/60">
+              <Award className="h-5 w-5 text-primary" strokeWidth={1.75} />
             </div>
             <div>
-              <CardTitle className="text-xl">NFT Certificate</CardTitle>
-              <p className="text-purple-100">Blockchain-verified authenticity</p>
+              <CardTitle className="text-lg">NFT certificate</CardTitle>
+              <p className="text-sm text-muted-foreground">Blockchain-verified authenticity</p>
             </div>
           </div>
-          <Badge className="bg-green-100 text-green-700 border-green-200">
-            <CheckCircle className="h-3 w-3 mr-1" />
+          <Badge variant="outline" className="gap-1.5">
+            <CheckCircle className="h-3 w-3" />
             Minted
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="p-6 space-y-6">
-        {/* Certificate Preview */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-dashed border-purple-200 dark:border-purple-700">
-          <div className="text-center mb-4">
-            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center">
-              <Award className="h-10 w-10 text-white" />
+      <CardContent className="space-y-6">
+        <div className="rounded-lg border border-dashed border-border p-6">
+          <div className="mb-4 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-border bg-secondary/60">
+              <Award className="h-8 w-8 text-primary" strokeWidth={1.75} />
             </div>
-            <h3 className="text-xl font-bold text-purple-800 dark:text-purple-200">
+            <h3 className="text-lg font-semibold text-foreground">
               {nftCertificate.metadata.name}
             </h3>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="mt-2 text-sm text-muted-foreground">
               {nftCertificate.metadata.description}
             </p>
           </div>
@@ -255,16 +236,15 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
           </div>
         </div>
 
-        {/* NFT Details */}
         <div className="space-y-4">
-          <h4 className="font-semibold flex items-center gap-2">
-            <Shield className="h-4 w-4 text-blue-600" />
-            Certificate Details
+          <h4 className="flex items-center gap-2 font-semibold text-foreground">
+            <Shield className="h-4 w-4 text-primary" strokeWidth={1.75} />
+            Certificate details
           </h4>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 space-y-3">
+
+          <div className="space-y-3 rounded-lg border border-border p-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Mint Address:</span>
+              <span className="text-sm text-muted-foreground">Mint address:</span>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs">{nftCertificate.mintAddress.substring(0, 8)}...{nftCertificate.mintAddress.slice(-8)}</span>
                 <Button
@@ -279,7 +259,7 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Token Address:</span>
+              <span className="text-sm text-muted-foreground">Token address:</span>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs">{nftCertificate.tokenAddress.substring(0, 8)}...{nftCertificate.tokenAddress.slice(-8)}</span>
                 <Button
@@ -297,12 +277,7 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
               <span className="text-sm text-muted-foreground">Transaction:</span>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs">{nftCertificate.txSignature.substring(0, 8)}...{nftCertificate.txSignature.slice(-8)}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  asChild
-                >
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" asChild>
                   <a href={getExplorerUrl(nftCertificate.txSignature)} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-3 w-3" />
                   </a>
@@ -312,48 +287,37 @@ export default function NFTCertificate({ batch, existingNFT }: NFTCertificatePro
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button
-            variant="outline"
-            onClick={downloadCertificate}
-            className="flex-1"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download Certificate
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button variant="outline" onClick={downloadCertificate} className="flex-1">
+            <Download className="mr-2 h-4 w-4" />
+            Download certificate
           </Button>
-          
+
           <Button
             variant="outline"
             onClick={() => copyToClipboard(nftCertificate.mintAddress, 'NFT mint address')}
             className="flex-1"
           >
-            <Copy className="h-4 w-4 mr-2" />
-            Copy Mint Address
+            <Copy className="mr-2 h-4 w-4" />
+            Copy mint address
           </Button>
-          
-          <Button
-            asChild
-            className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
-          >
+
+          <Button asChild className="flex-1">
             <a href={getExplorerUrl(nftCertificate.mintAddress, 'address')} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              View on Explorer
+              <ExternalLink className="mr-2 h-4 w-4" />
+              View on explorer
             </a>
           </Button>
         </div>
 
-        {/* Security Notice */}
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="rounded-lg border border-border bg-secondary/40 p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
             <div>
-              <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
-                Certificate Security
-              </h4>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                This NFT certificate is permanently recorded on the Solana blockchain and cannot be counterfeited. 
-                It serves as immutable proof of this pharmaceutical batch's authenticity and compliance.
+              <h4 className="text-sm font-medium text-foreground">Certificate security</h4>
+              <p className="mt-1 text-sm text-muted-foreground">
+                This NFT certificate is permanently recorded on the Solana blockchain and cannot be
+                counterfeited. It serves as immutable proof of this pharmaceutical batch's authenticity.
               </p>
             </div>
           </div>

@@ -49,24 +49,22 @@ export default function DevnetBalanceNotice({ walletAddress }: DevnetBalanceNoti
   }
 
   return (
-    <Alert className="border-2 shadow-lg border-amber-500 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10">
+    <Alert>
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0">
-          <Droplet className="h-6 w-6 text-amber-600" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-secondary/60">
+          <Droplet className="h-4 w-4 text-primary" strokeWidth={1.75} />
         </div>
         <div className="flex-1">
-          <AlertTitle className="text-lg font-bold text-amber-700 dark:text-amber-300">
-            Low devnet SOL balance
-          </AlertTitle>
-          <AlertDescription className="mt-2 text-amber-800 dark:text-amber-200">
+          <AlertTitle>Low devnet SOL balance</AlertTitle>
+          <AlertDescription className="mt-2">
             <p className="mb-3">
               Your wallet has {(balance / 1_000_000_000).toFixed(4)} SOL on Solana Devnet — you'll
               need at least 0.01 SOL to cover transaction fees. PharmaTrace runs on Devnet, so
               mainnet SOL won't work here, and your wallet must be switched to Devnet too.
             </p>
-            <Button asChild size="sm" variant="outline" className="bg-white dark:bg-gray-900">
+            <Button asChild size="sm" variant="outline">
               <a href="https://faucet.solana.com" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                 Get free devnet SOL
               </a>
             </Button>

@@ -344,73 +344,69 @@ export default function QrScanner({ onScan }: QrScannerProps) {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto overflow-hidden border-0 shadow-2xl bg-white dark:bg-gray-900">
+    <Card className="mx-auto w-full max-w-4xl overflow-hidden">
       <CardContent className="p-8">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-            QR Code Scanner
-          </h2>
+        <div className="mb-8 text-center">
+          <h2 className="mb-2 text-xl font-semibold text-foreground">QR code scanner</h2>
           <p className="text-muted-foreground">
             Scan, upload, or manually enter QR code data for verification
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 mb-8 bg-gray-100 dark:bg-gray-800 h-14">
-            <TabsTrigger 
-              value="camera" 
-              disabled={!isCameraAvailable} 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 h-12"
+          <TabsList className="mb-8 grid h-12 grid-cols-3">
+            <TabsTrigger
+              value="camera"
+              disabled={!isCameraAvailable}
+              className="flex items-center gap-2"
             >
-              <Camera className="h-5 w-5" />
+              <Camera className="h-4 w-4" />
               <span>Camera</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="upload" 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 h-12"
+            <TabsTrigger
+              value="upload"
+              className="flex items-center gap-2"
             >
-              <Image className="h-5 w-5" />
+              <Image className="h-4 w-4" />
               <span>Upload</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="manual" 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 h-12"
+            <TabsTrigger
+              value="manual"
+              className="flex items-center gap-2"
             >
-              <Type className="h-5 w-5" />
+              <Type className="h-4 w-4" />
               <span>Manual</span>
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="camera">
-            <div className="relative aspect-video bg-gray-900 rounded-2xl overflow-hidden mb-6 border-4 border-gray-300 dark:border-gray-600">
+            <div className="relative mb-6 aspect-video overflow-hidden rounded-lg border border-border bg-secondary/60">
               {cameraError ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-gray-100 dark:bg-gray-800">
-                  <div className="rounded-full bg-red-100 dark:bg-red-900 p-6 mb-4">
-                    <X className="h-12 w-12 text-red-600 dark:text-red-400" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/40 p-6">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md border border-border bg-background">
+                    <X className="h-5 w-5 text-destructive" strokeWidth={1.75} />
                   </div>
-                  <div className="text-red-600 dark:text-red-400 font-medium mb-2 text-lg">Camera Error</div>
-                  <div className="text-sm text-red-500 dark:text-red-300 text-center mb-6 max-w-md">{cameraError}</div>
+                  <div className="mb-2 text-lg font-medium text-foreground">Camera error</div>
+                  <div className="mb-6 max-w-md text-center text-sm text-muted-foreground">{cameraError}</div>
                   <div className="flex gap-3">
-                    <Button 
-                      size="lg" 
+                    <Button
                       onClick={() => {
                         setIsCameraAvailable(true);
                         setTriedBothFacingModes(false);
                         startCamera();
-                      }} 
+                      }}
                       className="flex items-center gap-2"
                     >
-                      <RotateCcw className="h-5 w-5" />
-                      Try Again
+                      <RotateCcw className="h-4 w-4" />
+                      Try again
                     </Button>
-                    <Button 
-                      size="lg" 
+                    <Button
                       variant="outline"
-                      onClick={() => setActiveTab('upload')} 
+                      onClick={() => setActiveTab('upload')}
                       className="flex items-center gap-2"
                     >
-                      <Upload className="h-5 w-5" />
-                      Upload Image
+                      <Upload className="h-4 w-4" />
+                      Upload image
                     </Button>
                   </div>
                 </div>
@@ -418,104 +414,92 @@ export default function QrScanner({ onScan }: QrScannerProps) {
                 <>
                   <video
                     ref={videoRef}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover"
                     playsInline
                     muted
                   />
                   <canvas
                     ref={canvasRef}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover"
                   />
                   {!scanning && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <Skeleton className="w-20 h-20 rounded-full" />
+                      <Skeleton className="h-16 w-16 rounded-full" />
                     </div>
                   )}
-                  
+
                   {/* Scanning overlay */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute inset-12 border-4 border-white/50 rounded-2xl">
-                      <div className="absolute top-0 left-0 w-8 h-8 border-t-8 border-l-8 border-blue-500 rounded-tl-2xl"></div>
-                      <div className="absolute top-0 right-0 w-8 h-8 border-t-8 border-r-8 border-blue-500 rounded-tr-2xl"></div>
-                      <div className="absolute bottom-0 left-0 w-8 h-8 border-b-8 border-l-8 border-blue-500 rounded-bl-2xl"></div>
-                      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-8 border-r-8 border-blue-500 rounded-br-2xl"></div>
+                  <div className="pointer-events-none absolute inset-0">
+                    <div className="absolute inset-10 rounded-xl border-2 border-white/50">
+                      <div className="absolute left-0 top-0 h-6 w-6 rounded-tl-xl border-l-4 border-t-4 border-primary" />
+                      <div className="absolute right-0 top-0 h-6 w-6 rounded-tr-xl border-r-4 border-t-4 border-primary" />
+                      <div className="absolute bottom-0 left-0 h-6 w-6 rounded-bl-xl border-b-4 border-l-4 border-primary" />
+                      <div className="absolute bottom-0 right-0 h-6 w-6 rounded-br-xl border-b-4 border-r-4 border-primary" />
                     </div>
-                    
+
                     {scanningActive && (
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                        <div className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2">
+                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform">
+                        <div className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
                           <Zap className="h-4 w-4 animate-pulse" />
                           Scanning for QR codes...
                         </div>
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="absolute bottom-6 right-6 flex gap-3">
-                    <Button
-                      size="lg"
-                      variant="secondary"
-                      onClick={toggleCamera}
-                      className="backdrop-blur-lg bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-700"
-                    >
-                      Switch Camera
+                    <Button size="sm" variant="secondary" onClick={toggleCamera}>
+                      Switch camera
                     </Button>
                   </div>
                 </>
               )}
             </div>
-            <div className="text-center mb-6">
-              <p className="text-muted-foreground mb-4">
+            <div className="mb-6 text-center">
+              <p className="mb-4 text-muted-foreground">
                 Position the QR code within the scanning area for automatic detection
               </p>
               <div className="flex justify-center">
-                <Button 
-                  variant={scanning ? "destructive" : "default"} 
+                <Button
+                  variant={scanning ? "destructive" : "default"}
                   onClick={scanning ? stopCamera : startCamera}
                   disabled={cameraError !== null}
-                  className="min-w-[200px] h-12 text-lg"
-                  size="lg"
+                  className="min-w-[200px]"
                 >
                   {scanning ? (
                     <>
-                      <X className="h-5 w-5 mr-2" /> Stop Scanning
+                      <X className="mr-2 h-4 w-4" /> Stop scanning
                     </>
                   ) : (
                     <>
-                      <Scan className="h-5 w-5 mr-2" /> Start Scanning
+                      <Scan className="mr-2 h-4 w-4" /> Start scanning
                     </>
                   )}
                 </Button>
               </div>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="upload">
             <div className="flex flex-col items-center">
-              <div className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-16 text-center mb-6 hover:border-primary/50 transition-colors bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 p-4 mb-6 inline-flex items-center justify-center">
-                  <Upload className="h-12 w-12 text-white" />
+              <div className="mb-6 w-full rounded-lg border border-dashed border-border p-16 text-center transition-colors hover:border-primary/40">
+                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-md border border-border bg-secondary/60">
+                  <Upload className="h-6 w-6 text-primary" strokeWidth={1.75} />
                 </div>
-                <h3 className="text-2xl font-medium mb-3">Upload QR Code Image</h3>
-                <p className="text-muted-foreground mb-8 max-w-md">
+                <h3 className="mb-2 text-lg font-medium text-foreground">Upload QR code image</h3>
+                <p className="mb-6 max-w-md text-muted-foreground">
                   Select an image file containing a QR code to decode automatically
                 </p>
-                <Button 
-                  variant="default" 
-                  className="cursor-pointer h-12 px-8 text-lg bg-gradient-to-r from-blue-600 to-purple-600" 
-                  size="lg"
-                  disabled={isProcessingFile}
-                  onClick={handleFileButtonClick}
-                >
+                <Button disabled={isProcessingFile} onClick={handleFileButtonClick}>
                   {isProcessingFile ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-primary-foreground" />
                       Processing...
                     </>
                   ) : (
                     <>
-                      <Upload className="h-5 w-5 mr-3" />
-                      Choose Image File
+                      <Upload className="mr-2 h-4 w-4" />
+                      Choose image file
                     </>
                   )}
                 </Button>
@@ -533,29 +517,28 @@ export default function QrScanner({ onScan }: QrScannerProps) {
               </p>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="manual">
             <div className="space-y-6">
               <div>
-                <h3 className="text-2xl font-medium mb-3">Manual QR Code Entry</h3>
-                <p className="text-muted-foreground mb-6">
+                <h3 className="mb-2 text-lg font-medium text-foreground">Manual QR code entry</h3>
+                <p className="mb-4 text-muted-foreground">
                   Paste the QR code JSON content below if you have it available:
                 </p>
                 <Textarea
                   placeholder='{"txSignature": "...", "batchId": "...", "medicineName": "...", "ownerAddress": "...", "timestamp": "..."}'
                   value={manualInput}
                   onChange={(e) => setManualInput(e.target.value)}
-                  className="min-h-[150px] font-mono text-sm bg-gray-50 dark:bg-gray-800 border-2"
+                  className="min-h-[150px] font-mono text-sm"
                 />
               </div>
               <Button
                 onClick={handleManualSubmit}
                 disabled={!manualInput.trim()}
-                className="w-full h-12 text-lg bg-gradient-to-r from-blue-600 to-purple-600"
-                size="lg"
+                className="w-full"
               >
-                <FileText className="h-5 w-5 mr-3" />
-                Parse QR Data
+                <FileText className="mr-2 h-4 w-4" />
+                Parse QR data
               </Button>
             </div>
           </TabsContent>

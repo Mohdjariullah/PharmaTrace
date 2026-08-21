@@ -50,6 +50,7 @@ import { Flag, Search, X, Filter } from "lucide-react";
 import { formatDate } from "@/services/qrService";
 import { truncatePublicKey } from "@/lib/solana";
 import BatchCard from "@/components/BatchCard";
+import BatchStatusBadge from "@/components/BatchStatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RegulatorPage() {
@@ -309,21 +310,7 @@ export default function RegulatorPage() {
                       </TableCell>
                       <TableCell>{formatDate(batch.exp_date)}</TableCell>
                       <TableCell>
-                        {batch.status === 0 && (
-                          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                            Valid
-                          </span>
-                        )}
-                        {batch.status === 1 && (
-                          <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                            Flagged
-                          </span>
-                        )}
-                        {batch.status === 2 && (
-                          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-                            Expired
-                          </span>
-                        )}
+                        <BatchStatusBadge status={batch.status} expDate={batch.exp_date} />
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -337,7 +324,6 @@ export default function RegulatorPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                             onClick={() => handleOpenFlagDialog(batch)}
                           >
                             <Flag className="h-4 w-4 mr-1" />
