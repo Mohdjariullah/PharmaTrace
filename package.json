@@ -70,7 +70,6 @@
     "jsqr": "^1.4.0",
     "lucide-react": "^0.446.0",
     "next": "^14.2.0",
-    "next-intl": "^3.19.1",
     "next-themes": "^0.3.0",
     "pino-pretty": "^10.3.1",
     "postcss": "8.4.30",
