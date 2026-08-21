@@ -7,17 +7,6 @@ import { connection, PHARMACY_PROGRAM_ID, findBatchPDA } from '@/lib/solana';
 import { getPharmaProgram } from '@/lib/anchor';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 
-async function validateTransaction(signature: string): Promise<boolean> {
-  try {
-    const status = await connection.getSignatureStatus(signature);
-    if (!status || !status.value) return false;
-    return status.value.confirmationStatus === 'confirmed' || status.value.confirmationStatus === 'finalized';
-  } catch (error) {
-    console.error('Error validating transaction:', error);
-    return false;
-  }
-}
-
 async function retryTransaction<T>(
   operation: () => Promise<T>,
   maxAttempts: number = 3,
@@ -108,11 +97,6 @@ export async function registerBatchTransaction(
 
       console.log('✅ Transaction confirmed:', signature);
 
-      const isValid = await validateTransaction(signature);
-      if (!isValid) {
-        throw new Error('Transaction failed validation');
-      }
-
       return {
         txSignature: signature,
         batchId,
@@ -125,6 +109,8 @@ export async function registerBatchTransaction(
       // Provide more specific error messages
       if (error.message?.includes('insufficient funds')) {
         throw new Error('Insufficient SOL for transaction fees. Please add more SOL to your wallet.');
+      } else if (error.message?.includes('already in use') || error.message?.includes('0x0')) {
+        throw new Error(`A batch with ID "${batchId}" is already registered on-chain.`);
       } else if (error.message?.includes('Simulation failed')) {
         throw new Error('Transaction simulation failed. Please check your inputs and try again.');
       }
@@ -241,11 +227,6 @@ export async function transferBatchOnChain(
       })
       .rpc();
 
-    const isValid = await validateTransaction(signature);
-    if (!isValid) {
-      throw new Error('Transaction failed validation');
-    }
-
     return signature;
   });
 }
@@ -269,11 +250,6 @@ export async function flagBatchOnChain(
         regulator: wallet.publicKey!,
       })
       .rpc();
-
-    const isValid = await validateTransaction(signature);
-    if (!isValid) {
-      throw new Error('Transaction failed validation');
-    }
 
     return signature;
   });

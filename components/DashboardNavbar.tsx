@@ -5,25 +5,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import WalletConnect from "@/components/WalletConnect";
 import { useTheme } from "next-themes";
-import { 
-  Menu, 
-  Home, 
-  Package, 
-  Scan, 
-  Repeat, 
-  BarChart3, 
-  ChevronRight,
+import {
+  Menu,
+  Home,
+  Package,
+  Scan,
+  Repeat,
+  BarChart3,
   Sun,
   Moon,
-  Pill,
+  ShieldCheck,
   Shield,
-  Zap,
-  ArrowLeft
+  ArrowLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWalletContext } from "@/components/WalletProvider";
@@ -35,210 +32,143 @@ interface DashboardNavbarProps {
 export default function DashboardNavbar({ children }: DashboardNavbarProps) {
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [open, setOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const { connected } = useWalletContext();
 
-  // Update isMobile based on window width
   useEffect(() => {
     setIsMounted(true);
-    
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const routes = [
-    {
-      href: "/dashboard",
-      label: "Overview",
-      icon: Home,
-      active: pathname === "/dashboard",
-      requiresWallet: false,
-      description: "Dashboard overview and statistics"
-    },
-    {
-      href: "/register",
-      label: "Register Batch",
-      icon: Package,
-      active: pathname === "/register",
-      requiresWallet: true,
-      description: "Register new pharmaceutical batches"
-    },
-    {
-      href: "/scan",
-      label: "Scan QR",
-      icon: Scan,
-      active: pathname === "/scan",
-      requiresWallet: false,
-      description: "Scan QR codes for verification"
-    },
-    {
-      href: "/verify",
-      label: "Verify Batch",
-      icon: Shield,
-      active: pathname.startsWith("/verify"),
-      requiresWallet: false,
-      description: "Verify batch authenticity"
-    },
-    {
-      href: "/transfer",
-      label: "Transfer Batch",
-      icon: Repeat,
-      active: pathname === "/transfer",
-      requiresWallet: true,
-      description: "Transfer batch ownership"
-    },
-    {
-      href: "/dashboard/regulator",
-      label: "Regulator Tools",
-      icon: BarChart3,
-      active: pathname === "/dashboard/regulator",
-      requiresWallet: true,
-      description: "Advanced regulatory tools"
-    },
+    { href: "/dashboard", label: "Overview", icon: Home, active: pathname === "/dashboard", requiresWallet: false },
+    { href: "/register", label: "Register batch", icon: Package, active: pathname === "/register", requiresWallet: true },
+    { href: "/scan", label: "Scan QR", icon: Scan, active: pathname === "/scan", requiresWallet: false },
+    { href: "/verify", label: "Verify batch", icon: Shield, active: pathname.startsWith("/verify"), requiresWallet: false },
+    { href: "/transfer", label: "Transfer batch", icon: Repeat, active: pathname === "/transfer", requiresWallet: true },
+    { href: "/dashboard/regulator", label: "Regulator tools", icon: BarChart3, active: pathname === "/dashboard/regulator", requiresWallet: true },
   ];
 
-  // Handle navigation for items requiring wallet
-  const handleNavigation = (route: typeof routes[0], e: React.MouseEvent) => {
+  const handleNavigation = (route: (typeof routes)[0], e: React.MouseEvent) => {
     if (route.requiresWallet && !connected) {
       e.preventDefault();
       toast({
-        title: "Wallet Required",
-        description: "Please connect your wallet to access this feature.",
+        title: "Wallet required",
+        description: "Connect your wallet to access this feature.",
         variant: "destructive",
       });
-    } else if (isMobile) {
+    } else {
       setOpen(false);
     }
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   if (!isMounted) {
     return null;
   }
 
+  const NavLink = ({ route, withDescription }: { route: (typeof routes)[0]; withDescription?: boolean }) => {
+    const Icon = route.icon;
+    return (
+      <Link
+        href={route.href}
+        onClick={(e) => handleNavigation(route, e)}
+        className={cn(
+          "flex items-center gap-3 rounded-md px-3.5 py-2.5 text-sm font-medium transition-colors",
+          route.active
+            ? "bg-secondary text-foreground"
+            : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+        <span className="flex-1">{route.label}</span>
+        {route.requiresWallet && !connected && (
+          <Badge variant="secondary" className="text-[10px] font-normal">
+            Wallet
+          </Badge>
+        )}
+      </Link>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-800">
+    <div className="min-h-screen bg-background">
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/20 dark:border-gray-700/20 shadow-sm">
-        <div className="container mx-auto px-4">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
+        <div className="container mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             {/* Mobile Menu Button */}
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
+                <Button variant="ghost" size="icon" className="lg:hidden">
                   <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle Menu</span>
+                  <span className="sr-only">Toggle menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-80 bg-white dark:bg-gray-900">
+              <SheetContent side="left" className="w-80">
                 <div className="flex flex-col h-full">
-                  {/* Mobile Header */}
-                  <div className="flex items-center gap-3 pb-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                      <Pill className="h-6 w-6 text-white" />
+                  <div className="flex items-center gap-2.5 pb-6 border-b border-border">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+                      <ShieldCheck className="h-4 w-4 text-primary-foreground" strokeWidth={2.25} />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        PharmaTrace
-                      </h2>
+                      <h2 className="text-[15px] font-semibold tracking-tight">PharmaTrace</h2>
                       <p className="text-xs text-muted-foreground">Dashboard</p>
                     </div>
                   </div>
 
-                  {/* Mobile Navigation */}
-                  <nav className="flex-1 py-6">
-                    <div className="space-y-2">
-                      {routes.map((route) => (
-                        <Link
-                          key={route.href}
-                          href={route.href}
-                          onClick={(e) => handleNavigation(route, e)}
-                          className={cn(
-                            "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 group",
-                            route.active 
-                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg" 
-                              : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                          )}
-                        >
-                          <route.icon className="h-5 w-5" />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              {route.label}
-                              {route.requiresWallet && !connected && (
-                                <Badge variant="secondary" className="text-xs">Wallet Required</Badge>
-                              )}
-                            </div>
-                            <div className="text-xs opacity-70 mt-0.5">{route.description}</div>
-                          </div>
-                          <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </Link>
-                      ))}
-                    </div>
+                  <nav className="flex-1 py-6 space-y-1">
+                    {routes.map((route) => (
+                      <NavLink key={route.href} route={route} />
+                    ))}
                   </nav>
 
-                  {/* Mobile Footer */}
-                  <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <div className="pt-6 border-t border-border">
                     <Link
                       href="/"
-                      className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      className="flex items-center gap-3 rounded-md px-3.5 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
                     >
                       <ArrowLeft className="h-4 w-4" />
-                      Back to Home
+                      Back to home
                     </Link>
                   </div>
                 </div>
               </SheetContent>
             </Sheet>
-            
+
             {/* Logo */}
-            <Link href="/dashboard" className="flex items-center gap-3 group">
-              <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                  <Pill className="h-6 w-6 text-white" />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-200"></div>
+            <Link href="/dashboard" className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+                <ShieldCheck className="h-4 w-4 text-primary-foreground" strokeWidth={2.25} />
               </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  PharmaTrace
-                </h1>
-                <p className="text-xs text-muted-foreground">Dashboard</p>
+              <div className="hidden sm:block leading-tight">
+                <div className="text-[15px] font-semibold tracking-tight">PharmaTrace</div>
+                <div className="text-xs text-muted-foreground">Dashboard</div>
               </div>
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-1">
               {routes.slice(0, 4).map((route) => {
                 const Icon = route.icon;
-                const isActive = route.active;
-                
                 return (
                   <Link
                     key={route.href}
                     href={route.href}
                     onClick={(e) => handleNavigation(route, e)}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 relative group",
-                      isActive
-                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
-                        : "text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-800/60"
+                      "relative flex items-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-colors",
+                      route.active
+                        ? "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                     )}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden lg:inline">{route.label}</span>
+                    <Icon className="h-4 w-4" strokeWidth={1.75} />
+                    {route.label}
                     {route.requiresWallet && !connected && (
-                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-destructive" />
                     )}
                   </Link>
                 );
@@ -246,26 +176,18 @@ export default function DashboardNavbar({ children }: DashboardNavbarProps) {
             </div>
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-3">
-              {/* Theme Toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleTheme}
-                className="relative w-10 h-10 rounded-xl hover:bg-white/60 dark:hover:bg-gray-800/60 transition-colors duration-200"
-              >
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={toggleTheme} className="relative w-9 h-9 rounded-md">
                 <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                 <span className="sr-only">Toggle theme</span>
               </Button>
 
-              {/* Wallet Connect */}
               <WalletConnect />
 
-              {/* Back to Home */}
               <Button asChild variant="outline" size="sm" className="hidden sm:flex">
                 <Link href="/">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  <ArrowLeft className="h-4 w-4 mr-1.5" />
                   Home
                 </Link>
               </Button>
@@ -274,70 +196,21 @@ export default function DashboardNavbar({ children }: DashboardNavbarProps) {
         </div>
       </header>
 
-      {/* Sidebar for larger screens */}
-      <div className="flex flex-1">
-        <aside className="hidden lg:block w-72 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl border-r border-gray-200/20 dark:border-gray-700/20">
-          <div className="sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto">
-            <div className="p-6">
-              {/* Quick Stats */}
-              <div className="mb-8">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Quick Stats</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-3">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-blue-600" />
-                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Active</span>
-                    </div>
-                    <div className="text-lg font-bold text-blue-900 dark:text-blue-100 mt-1">24</div>
-                  </div>
-                  <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-3">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-green-600" />
-                      <span className="text-xs font-medium text-green-700 dark:text-green-300">Verified</span>
-                    </div>
-                    <div className="text-lg font-bold text-green-900 dark:text-green-100 mt-1">156</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Navigation */}
-              <nav className="space-y-2">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Navigation</h3>
-                {routes.map((route) => (
-                  <Link
-                    key={route.href}
-                    href={route.href}
-                    onClick={(e) => handleNavigation(route, e)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 group",
-                      route.active 
-                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg" 
-                        : "text-gray-600 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80"
-                    )}
-                  >
-                    <route.icon className="h-5 w-5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        {route.label}
-                        {route.requiresWallet && !connected && (
-                          <Badge variant="secondary" className="text-xs">Wallet Required</Badge>
-                        )}
-                      </div>
-                      <div className="text-xs opacity-70 mt-0.5">{route.description}</div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </Link>
-                ))}
-              </nav>
-            </div>
+      <div className="flex">
+        {/* Sidebar for larger screens */}
+        <aside className="hidden lg:block w-64 shrink-0 border-r border-border">
+          <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
+            <nav className="p-4 space-y-1">
+              {routes.map((route) => (
+                <NavLink key={route.href} route={route} />
+              ))}
+            </nav>
           </div>
         </aside>
-        
+
         {/* Main content */}
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto p-6 lg:p-8">
-            {children}
-          </div>
+        <main className="flex-1 min-w-0">
+          <div className="container mx-auto px-4 py-8 sm:px-6 lg:py-10">{children}</div>
         </main>
       </div>
     </div>

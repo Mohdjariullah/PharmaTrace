@@ -7,17 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { 
-  Menu, 
-  X, 
-  Pill, 
-  Sun, 
-  Moon, 
-  Package, 
-  Scan, 
+import {
+  Menu,
+  ShieldCheck,
+  Sun,
+  Moon,
+  Package,
+  Scan,
   BarChart3,
   Shield,
-  ArrowRight
 } from "lucide-react";
 
 export default function Navbar() {
@@ -31,7 +29,6 @@ export default function Navbar() {
   }, []);
 
   const navigation = [
-    { name: "Home", href: "/", icon: Pill },
     { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
     { name: "Register", href: "/register", icon: Package },
     { name: "Scan", href: "/scan", icon: Scan },
@@ -47,18 +44,15 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200/20 dark:border-gray-700/20">
-      <div className="container mx-auto px-4">
+    <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/85 backdrop-blur-md">
+      <div className="container mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                <Pill className="h-5 w-5 text-white" />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity duration-200"></div>
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+              <ShieldCheck className="h-4 w-4 text-primary-foreground" strokeWidth={2.25} />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="text-[15px] font-semibold tracking-tight">
               PharmaTrace
             </span>
           </Link>
@@ -68,19 +62,19 @@ export default function Navbar() {
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
-              
+
               return (
                 <Link
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105",
+                    "flex items-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4" strokeWidth={2} />
                   {item.name}
                 </Link>
               );
@@ -88,17 +82,20 @@ export default function Navbar() {
           </div>
 
           {/* Theme Toggle & Mobile Menu */}
-          <div className="flex items-center gap-2">
-            {/* Theme Toggle */}
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="relative w-9 h-9 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+              className="relative w-9 h-9 rounded-md"
             >
               <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
+            </Button>
+
+            <Button asChild size="sm" className="hidden sm:inline-flex ml-1">
+              <Link href="/dashboard">Open dashboard</Link>
             </Button>
 
             {/* Mobile Menu */}
@@ -107,59 +104,55 @@ export default function Navbar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="md:hidden w-9 h-9 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                  className="md:hidden w-9 h-9 rounded-md"
                 >
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80 bg-white dark:bg-gray-900">
+              <SheetContent side="right" className="w-80">
                 <div className="flex flex-col h-full">
-                  {/* Mobile Header */}
-                  <div className="flex items-center justify-between pb-6 border-b border-gray-200 dark:border-gray-700">
-                    <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-                      <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                        <Pill className="h-5 w-5 text-white" />
+                  <div className="flex items-center justify-between pb-6 border-b border-border">
+                    <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsOpen(false)}>
+                      <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+                        <ShieldCheck className="h-4 w-4 text-primary-foreground" strokeWidth={2.25} />
                       </div>
-                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      <span className="text-[15px] font-semibold tracking-tight">
                         PharmaTrace
                       </span>
                     </Link>
                   </div>
 
-                  {/* Mobile Navigation */}
                   <div className="flex-1 py-6">
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       {navigation.map((item) => {
                         const Icon = item.icon;
                         const isActive = pathname === item.href;
-                        
+
                         return (
                           <Link
                             key={item.name}
                             href={item.href}
                             onClick={() => setIsOpen(false)}
                             className={cn(
-                              "flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 group",
+                              "flex items-center gap-3 px-3.5 py-2.5 rounded-md text-[15px] font-medium transition-colors",
                               isActive
-                                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
-                                : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                ? "bg-secondary text-foreground"
+                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                             )}
                           >
-                            <Icon className="h-5 w-5" />
+                            <Icon className="h-4 w-4" strokeWidth={2} />
                             {item.name}
-                            <ArrowRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                           </Link>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Mobile Footer */}
-                  <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-                      Secure • Transparent • Verified
-                    </div>
+                  <div className="pt-6 border-t border-border">
+                    <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                      Secure · Transparent · Verified
+                    </p>
                   </div>
                 </div>
               </SheetContent>
